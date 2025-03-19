@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>索尼 徽章批量查询</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-size: 16px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .loading {
+            font-weight: bold;
+            color: blue;
+        }
+        .twitter {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h2>索尼 徽章批量查询</h2>
+    <p>输入钱包地址（每行一个）：</p>
+    <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea>
+    <br>
+    <button onclick="queryBadges()">查询</button>
+    <button onclick="exportToCSV()">导出 CSV</button>
+    <div id="output" class="result"></div>
+
+    <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
+
+    <script>
+        async function queryBadges() {
+            const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
+            const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+            const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
+            const outputDiv = document.getElementById("output");
+            outputDiv.innerHTML = "<p class='loading'>查询中，请稍候...</p>";
+
+            let results = [];
+
+            for (let i = 0; i < walletList.length; i++) {
+                let wallet = walletList[i];
+                if (!wallet) continue;
+
+                let kyoStatus = "❌ 查询失败";
+                let statsStatus = "❌ 查询失败";
+
+                // 查询 KYO 徽章
+                try {
+                    let response = await fetch(kyoApiUrl + wallet);
+                    let data = await response.json();
+                    kyoStatus = data.eligible === true ? "✅ 已完成" : "❌ 未完成";
+                } catch (error) {
+                    console.error(`KYO 查询失败: ${wallet}`, error);
+                }
+
+                // 查询 Stats 徽章
+                try {
+                    let response = await fetch(statsApiUrl + wallet);
+                    let data = await response.json();
+                    statsStatus = data.met_all_requirements === true ? "✅ 已完成" : "❌ 未完成";
+                } catch (error) {
+                    console.error(`Stats 查询失败: ${wallet}`, error);
+                }
+
+                results.push({ index: i + 1, address: wallet, kyoStatus: kyoStatus, statsStatus: statsStatus });
+            }
+
+            // 生成表格
+            outputDiv.innerHTML = `
+                <table>
+                    <tr>
+                        <th>编号</th>
+                        <th>地址</th>
+                        <th>KYO徽章</th>
+                        <th>Stats徽章</th>
+                    </tr>
+                    ${results.map(item => `<tr>
+                        <td>${item.index}</td>
+                        <td>${item.address}</td>
+                        <td>${item.kyoStatus}</td>
+                        <td>${item.statsStatus}</td>
+                    </tr>`).join("")}
+                </table>
+            `;
+        }
+
+        function exportToCSV() {
+            const outputDiv = document.getElementById("output");
+            if (!outputDiv.innerHTML) {
+                alert("请先进行查询！");
+                return;
+            }
+
+            let csvContent = "编号,钱包地址,KYO徽章,Stats徽章\n";
+            document.querySelectorAll("table tr").forEach((row, index) => {
+                if (index === 0) return; // 跳过标题行
+                let cells = row.querySelectorAll("td");
+                let rowData = Array.from(cells).map(cell => cell.innerText).join(",");
+                csvContent += rowData + "\n";
+            });
+
+            let encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Badge_Check.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+    </script>
+</body>
+</html>
