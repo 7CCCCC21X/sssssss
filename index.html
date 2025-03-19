@@ -66,7 +66,19 @@
     <br>
     <button onclick="queryBadges()">查询</button>
     <button onclick="exportToCSV()">导出 CSV</button>
-    <div id="output" class="result"></div>
+    <div id="output" class="result">
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>地址</th>
+                    <th>KYO徽章</th>
+                    <th>Stats徽章</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
     <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
@@ -75,10 +87,8 @@
             const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
             const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
-            const outputDiv = document.getElementById("output");
-            outputDiv.innerHTML = "<p class='loading'>查询中，请稍候...</p>";
-
-            let results = [];
+            const tableBody = document.querySelector("#resultTable tbody");
+            tableBody.innerHTML = ""; // 清空之前的结果
 
             for (let i = 0; i < walletList.length; i++) {
                 let wallet = walletList[i];
@@ -86,6 +96,16 @@
 
                 let kyoStatus = "❌ 查询失败";
                 let statsStatus = "❌ 查询失败";
+
+                // 先添加一行，占位
+                let row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${wallet}</td>
+                    <td class="kyo-status">查询中...</td>
+                    <td class="stats-status">查询中...</td>
+                `;
+                tableBody.appendChild(row);
 
                 // 查询 KYO 徽章
                 try {
@@ -105,40 +125,23 @@
                     console.error(`Stats 查询失败: ${wallet}`, error);
                 }
 
-                results.push({ index: i + 1, address: wallet, kyoStatus: kyoStatus, statsStatus: statsStatus });
+                // 更新表格的这一行
+                row.querySelector(".kyo-status").innerText = kyoStatus;
+                row.querySelector(".stats-status").innerText = statsStatus;
             }
-
-            // 生成表格
-            outputDiv.innerHTML = `
-                <table>
-                    <tr>
-                        <th>编号</th>
-                        <th>地址</th>
-                        <th>KYO徽章</th>
-                        <th>Stats徽章</th>
-                    </tr>
-                    ${results.map(item => `<tr>
-                        <td>${item.index}</td>
-                        <td>${item.address}</td>
-                        <td>${item.kyoStatus}</td>
-                        <td>${item.statsStatus}</td>
-                    </tr>`).join("")}
-                </table>
-            `;
         }
 
         function exportToCSV() {
-            const outputDiv = document.getElementById("output");
-            if (!outputDiv.innerHTML) {
+            const rows = document.querySelectorAll("#resultTable tbody tr");
+            if (rows.length === 0) {
                 alert("请先进行查询！");
                 return;
             }
 
             let csvContent = "编号,钱包地址,KYO徽章,Stats徽章\n";
-            document.querySelectorAll("table tr").forEach((row, index) => {
-                if (index === 0) return; // 跳过标题行
-                let cells = row.querySelectorAll("td");
-                let rowData = Array.from(cells).map(cell => cell.innerText).join(",");
+            rows.forEach(row => {
+                let cols = row.querySelectorAll("td");
+                let rowData = Array.from(cols).map(col => col.innerText).join(",");
                 csvContent += rowData + "\n";
             });
 
