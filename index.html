@@ -74,6 +74,7 @@
                     <th>地址</th>
                     <th>KYO徽章</th>
                     <th>Stats徽章</th>
+                    <th>Untitled徽章</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -86,9 +87,21 @@
         async function queryBadges() {
             const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
             const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+            const untitledApiUrl = "https://sssssss-6b4z8wwqe-7ccccc21xs-projects.vercel.app/wallet_transactions_latest.json"; // 使用 Vercel API
+
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
             const tableBody = document.querySelector("#resultTable tbody");
             tableBody.innerHTML = ""; // 清空之前的结果
+
+            let untitledData = {};
+            try {
+                console.log(`请求 Untitled 数据: ${untitledApiUrl}`);
+                let untitledResponse = await fetch(untitledApiUrl);
+                untitledData = await untitledResponse.json();
+                console.log("获取的 Untitled 数据:", untitledData);
+            } catch (error) {
+                console.error("Untitled API 查询失败:", error);
+            }
 
             for (let i = 0; i < walletList.length; i++) {
                 let wallet = walletList[i];
@@ -96,6 +109,7 @@
 
                 let kyoStatus = "❌ 查询失败";
                 let statsStatus = "❌ 查询失败";
+                let untitledStatus = "❌ 查询失败";
 
                 // 先添加一行，占位
                 let row = document.createElement("tr");
@@ -104,6 +118,7 @@
                     <td>${wallet}</td>
                     <td class="kyo-status">查询中...</td>
                     <td class="stats-status">查询中...</td>
+                    <td class="untitled-status">查询中...</td>
                 `;
                 tableBody.appendChild(row);
 
@@ -125,9 +140,19 @@
                     console.error(`Stats 查询失败: ${wallet}`, error);
                 }
 
+                // 查询 Untitled 徽章
+                try {
+                    let txCount = untitledData[wallet] || 0;
+                    console.log(`钱包 ${wallet} 交易次数: ${txCount}`);
+                    untitledStatus = txCount >= 10 ? "✅ 已完成" : `❌ 未完成 (${txCount})`;
+                } catch (error) {
+                    console.error(`Untitled 查询失败: ${wallet}`, error);
+                }
+
                 // 更新表格的这一行
                 row.querySelector(".kyo-status").innerText = kyoStatus;
                 row.querySelector(".stats-status").innerText = statsStatus;
+                row.querySelector(".untitled-status").innerText = untitledStatus;
             }
         }
 
@@ -138,7 +163,7 @@
                 return;
             }
 
-            let csvContent = "编号,钱包地址,KYO徽章,Stats徽章\n";
+            let csvContent = "编号,钱包地址,KYO徽章,Stats徽章,Untitled徽章\n";
             rows.forEach(row => {
                 let cols = row.querySelectorAll("td");
                 let rowData = Array.from(cols).map(col => col.innerText).join(",");
