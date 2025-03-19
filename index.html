@@ -84,24 +84,34 @@
     <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
     <script>
-        async function queryBadges() {
-            const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
-            const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
-            const untitledApiUrl = "https://storage.googleapis.com/untitledbank-badge/wallet_transactions_latest.json";
+        const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions"; // Vercel API
+        const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
+        const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
 
+        async function fetchUntitledData() {
+            try {
+                console.log(`请求 Untitled 数据: ${untitledApiUrl}`);
+                let response = await fetch(untitledApiUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP 错误! 状态: ${response.status}`);
+                }
+
+                let data = await response.json();
+                console.log("获取的 Untitled 数据:", data);
+                return data;
+            } catch (error) {
+                console.error("Untitled API 查询失败:", error);
+                return {};
+            }
+        }
+
+        async function queryBadges() {
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
             const tableBody = document.querySelector("#resultTable tbody");
             tableBody.innerHTML = ""; // 清空之前的结果
 
-            let untitledData = {};
-            try {
-                console.log(`请求 Untitled 数据: ${untitledApiUrl}`);
-                let untitledResponse = await fetch(untitledApiUrl);
-                untitledData = await untitledResponse.json();
-                console.log("获取的 Untitled 数据:", untitledData);
-            } catch (error) {
-                console.error("Untitled API 查询失败:", error);
-            }
+            let untitledData = await fetchUntitledData();
 
             for (let i = 0; i < walletList.length; i++) {
                 let wallet = walletList[i];
@@ -111,7 +121,6 @@
                 let statsStatus = "❌ 查询失败";
                 let untitledStatus = "❌ 查询失败";
 
-                // 先添加一行，占位
                 let row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${i + 1}</td>
@@ -122,7 +131,7 @@
                 `;
                 tableBody.appendChild(row);
 
-                // 查询 KYO 徽章
+                // ✅ 查询 KYO 徽章
                 try {
                     let response = await fetch(kyoApiUrl + wallet);
                     let data = await response.json();
@@ -131,7 +140,7 @@
                     console.error(`KYO 查询失败: ${wallet}`, error);
                 }
 
-                // 查询 Stats 徽章
+                // ✅ 查询 Stats 徽章
                 try {
                     let response = await fetch(statsApiUrl + wallet);
                     let data = await response.json();
@@ -140,14 +149,13 @@
                     console.error(`Stats 查询失败: ${wallet}`, error);
                 }
 
-                // 查询 Untitled 徽章（解决大小写问题）
+                // ✅ 查询 Untitled 徽章（修正大小写匹配）
                 try {
-                    let walletLower = wallet.toLowerCase();
-                    let matchedKey = Object.keys(untitledData).find(key => key.toLowerCase() === walletLower);
-                    let txCount = matchedKey ? parseInt(untitledData[matchedKey]) : 0;
-
-                    console.log(`钱包 ${wallet} 原始值: ${untitledData[matchedKey]}, 交易次数: ${txCount}`);
+                    let matchingKey = Object.keys(untitledData).find(k => k.toLowerCase() === wallet.toLowerCase());
+                    let txCount = matchingKey ? parseInt(untitledData[matchingKey]) : 0;
                     
+                    console.log(`钱包 ${wallet} -> 交易次数: ${txCount}`);
+
                     untitledStatus = txCount >= 10 ? "✅ 已完成" : `❌ 未完成 (${txCount})`;
                 } catch (error) {
                     console.error(`Untitled 查询失败: ${wallet}`, error);
