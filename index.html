@@ -84,24 +84,34 @@
     <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
     <script>
-        async function queryBadges() {
-            const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
-            const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
-            const untitledApiUrl = "https://sssssss-6b4z8wwqe-7ccccc21xs-projects.vercel.app/wallet_transactions_latest.json"; // 使用 Vercel API
+        const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions"; // Vercel API
+        const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
+        const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
 
+        async function fetchUntitledData() {
+            try {
+                console.log(`请求 Untitled 数据: ${untitledApiUrl}`);
+                let response = await fetch(untitledApiUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP 错误! 状态: ${response.status}`);
+                }
+
+                let data = await response.json();
+                console.log("获取的 Untitled 数据:", data);
+                return data;
+            } catch (error) {
+                console.error("Untitled API 查询失败:", error);
+                return {};
+            }
+        }
+
+        async function queryBadges() {
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
             const tableBody = document.querySelector("#resultTable tbody");
             tableBody.innerHTML = ""; // 清空之前的结果
 
-            let untitledData = {};
-            try {
-                console.log(`请求 Untitled 数据: ${untitledApiUrl}`);
-                let untitledResponse = await fetch(untitledApiUrl);
-                untitledData = await untitledResponse.json();
-                console.log("获取的 Untitled 数据:", untitledData);
-            } catch (error) {
-                console.error("Untitled API 查询失败:", error);
-            }
+            let untitledData = await fetchUntitledData();
 
             for (let i = 0; i < walletList.length; i++) {
                 let wallet = walletList[i];
