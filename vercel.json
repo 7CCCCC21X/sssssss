@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/wallet-transactions",
+      "destination": "https://storage.googleapis.com/untitledbank-badge/wallet_transactions_latest.json"
+    }
+  ]
+}
