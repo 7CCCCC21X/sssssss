@@ -1,12 +1,16 @@
-async function fetchUntitledStatus(wallet) {
-    try {
-        const url = `https://your-project.vercel.app/api/proxy?address=${wallet}&start=4085424&end=5165422`;
-        const response = await fetch(url);
-        const data = await response.json();
-        const txCount = data.length ?? 0;
-        return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
-    } catch (error) {
-        console.error(`Untitled 查询失败: ${wallet}`, error);
-        return "❌ 无";
-    }
+// api/proxy.js
+export default async function handler(req, res) {
+  const { address, start, end } = req.query;
+  // 构造正确的目标接口 URL
+  const apiUrl = `https://tx-api.untitledbank.co/user-txs?address=${address}&start=${start}&end=${end}`;
+  try {
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    // 添加 CORS 允许访问的头信息
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(200).json(data);
+  } catch (error) {
+    console.error('代理接口请求出错：', error);
+    res.status(500).json({ error: 'Error fetching data' });
+  }
 }
