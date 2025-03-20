@@ -17,13 +17,26 @@ export default async function handler(req, res) {
     }
 
     // 目标 API URL
-    const targetUrl = `https://tx-api.untitledbank.co/user-txs?address=${address}&start=${start}&end=${end}`;
+    const targetUrl = `https://tx-api.untitledbank.co/user-txs?address=${encodeURIComponent(address)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
 
     try {
-        // 代理请求到目标 API
-        const response = await fetch(targetUrl);
+        // 代理请求到目标 API，增加 User-Agent 头
+        const response = await fetch(targetUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+        });
+
+        // 检查 API 响应状态
+        if (!response.ok) {
+            console.error("API 响应失败:", response.statusText);
+            return res.status(response.status).json({ error: "目标 API 响应失败", status: response.status });
+        }
+
+        // 解析 JSON 数据
         const data = await response.json();
         return res.status(200).json(data);
+
     } catch (error) {
         console.error("API 请求失败:", error);
         return res.status(500).json({ error: "API 代理请求失败" });
