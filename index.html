@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>索尼 徽章批量查询</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -93,62 +94,20 @@
     const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
     const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
 
-    async function fetchKyoStatus(wallet) {
-      try {
-        let response = await fetch(kyoApiUrlPrimary + wallet);
-        let data = await response.json();
-        if (data.eligible) return "✅ 有";
-      } catch (error) {
-        console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
-      }
-
-      try {
-        let response = await fetch(kyoApiUrlBackup + wallet);
-        let data = await response.json();
-        return data.eligible ? "✅ 有" : "❌ 无";
-      } catch (error) {
-        console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
-        return "❌ 无";
-      }
-    }
-
-    async function fetchSakeStatus(wallet) {
-      try {
-        let response = await fetch(sakeApiUrl + wallet);
-        let data = await response.json();
-        return data.met_all_requirements ? "✅ 有" : "❌ 无";
-      } catch (error) {
-        console.error(`Sake 查询失败: ${wallet}`, error);
-        return "❌ 无";
-      }
-    }
-
     async function fetchUntitledStatus(wallet) {
       try {
-        const response = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422`);
+        // ✅ **前端先转换地址为 EIP-55 格式**
+        wallet = ethers.utils.getAddress(wallet);
+
+        // ✅ **防止缓存，添加时间戳**
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${timestamp}`);
         const data = await response.json();
+
         const txCount = data.transactions?.length ?? 0;
         return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
       } catch (error) {
         console.error(`Untitled 查询失败: ${wallet}`, error);
-        return "❌ 无";
-      }
-    }
-
-    async function fetchOgStatus(wallet) {
-      try {
-        let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
-        let data = await response.json();
-        if (data.items) {
-          for (let item of data.items) {
-            if (item.token.address.toLowerCase() === ogNftContract.toLowerCase()) {
-              return "✅ 有";
-            }
-          }
-        }
-        return "❌ 无";
-      } catch (error) {
-        console.error(`OG 查询失败: ${wallet}`, error);
         return "❌ 无";
       }
     }
@@ -166,47 +125,13 @@
         row.innerHTML = `
           <td>${i + 1}</td>
           <td>${wallet}</td>
-          <td class="kyo-status">查询中...</td>
-          <td class="sake-status">查询中...</td>
           <td class="untitled-status">查询中...</td>
-          <td class="og-status">查询中...</td>
         `;
         tableBody.appendChild(row);
 
-        let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
-          fetchKyoStatus(wallet),
-          fetchSakeStatus(wallet),
-          fetchUntitledStatus(wallet),
-          fetchOgStatus(wallet)
-        ]);
-
-        row.querySelector(".kyo-status").innerText = kyoStatus;
-        row.querySelector(".sake-status").innerText = sakeStatus;
+        let untitledStatus = await fetchUntitledStatus(wallet);
         row.querySelector(".untitled-status").innerText = untitledStatus;
-        row.querySelector(".og-status").innerText = ogStatus;
       }
-    }
-
-    function exportToCSV() {
-      const table = document.getElementById("resultTable");
-      let csvContent = "";
-
-      for (let row of table.rows) {
-        let rowData = [];
-        for (let cell of row.cells) {
-          rowData.push(cell.innerText);
-        }
-        csvContent += rowData.join(",") + "\n";
-      }
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "badge_results.csv";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     }
   </script>
 </body>
