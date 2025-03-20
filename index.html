@@ -102,7 +102,6 @@
                 console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
             }
 
-            // 备用 API 查询
             try {
                 let response = await fetch(kyoApiUrlBackup + wallet);
                 let data = await response.json();
@@ -119,8 +118,8 @@
                 let endBlock = 5165422;
                 let response = await fetch(`${vercelApiBase}?address=${wallet}&start=${startBlock}&end=${endBlock}`);
                 let data = await response.json();
-                let txCount = data.length || 0;
-
+                
+                let txCount = data.transactions ? data.transactions.length : 0;
                 return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
             } catch (error) {
                 console.error(`Untitled 查询失败: ${wallet}`, error);
@@ -131,7 +130,7 @@
         async function queryBadges() {
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
             const tableBody = document.querySelector("#resultTable tbody");
-            tableBody.innerHTML = ""; 
+            tableBody.innerHTML = "";
 
             for (let i = 0; i < walletList.length; i++) {
                 let wallet = walletList[i];
@@ -153,10 +152,8 @@
                 `;
                 tableBody.appendChild(row);
 
-                // ✅ 查询 KYO 徽章
                 kyoStatus = await fetchKyoStatus(wallet);
 
-                // ✅ 查询 Sake（原Stats）徽章
                 try {
                     let response = await fetch(sakeApiUrl + wallet);
                     let data = await response.json();
@@ -165,10 +162,8 @@
                     console.error(`Sake 查询失败: ${wallet}`, error);
                 }
 
-                // ✅ 查询 Untitled 徽章（根据交易次数）
                 untitledStatus = await fetchUntitledStatus(wallet);
 
-                // ✅ 查询 OG 徽章
                 try {
                     let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
                     let data = await response.json();
