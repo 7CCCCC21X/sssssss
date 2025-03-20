@@ -87,7 +87,7 @@
 
     <script>
         const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions"; // Vercel API
-        const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
+        const kyoApiUrl = "https://api.cluster.kyo.finance/quest/1868/0/verify?address="; // ✅ 更新的 KYO 查询接口
         const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
         const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
         const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d"; // OG 徽章合约地址
@@ -137,7 +137,7 @@
                 `;
                 tableBody.appendChild(row);
 
-                // ✅ 查询 KYO 徽章
+                // ✅ 查询 KYO 徽章（更新接口）
                 try {
                     let response = await fetch(kyoApiUrl + wallet);
                     let data = await response.json();
