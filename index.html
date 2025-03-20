@@ -87,25 +87,39 @@
 
     <script>
         const vercelApiBase = "https://sssssss-e758bc8ar-7ccccc21xs-projects.vercel.app/api/proxy";
+        const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
+        const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
         const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
         const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
         const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
 
-        // ✅ 修正 fetchUntitledStatus，读取 transaction_count
+        // ✅ 修复 KYO 查询逻辑
+        async function fetchKyoStatus(wallet) {
+            try {
+                let response = await fetch(kyoApiUrlPrimary + wallet);
+                let data = await response.json();
+                if (data.eligible) return "✅ 有";
+            } catch (error) {
+                console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
+            }
+
+            try {
+                let response = await fetch(kyoApiUrlBackup + wallet);
+                let data = await response.json();
+                return data.eligible ? "✅ 有" : "❌ 无";
+            } catch (error) {
+                console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
+                return "❌ 无";
+            }
+        }
+
         async function fetchUntitledStatus(wallet) {
             try {
                 let startBlock = 4085424;
                 let endBlock = 5165422;
-                let response = await fetch(`${vercelApiBase}?address=${wallet}&start=${startBlock}&end=${endBlock}&t=${Date.now()}`, {
-                    method: "GET",
-                    headers: {
-                        "Cache-Control": "no-cache, no-store, must-revalidate",
-                        "Pragma": "no-cache",
-                        "Expires": "0"
-                    }
-                });
-
+                let response = await fetch(`${vercelApiBase}?address=${wallet}&start=${startBlock}&end=${endBlock}&t=${Date.now()}`);
                 let data = await response.json();
+                
                 let txCount = data.transaction_count ?? 0;
                 return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
             } catch (error) {
@@ -134,15 +148,17 @@
                 `;
                 tableBody.appendChild(row);
 
-                // 并行查询，提高速度
-                let [untitledStatus, sakeStatus, ogStatus] = await Promise.all([
-                    fetchUntitledStatus(wallet),
+                // ✅ 并行查询，提高查询速度
+                let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
+                    fetchKyoStatus(wallet),
                     fetchSakeStatus(wallet),
+                    fetchUntitledStatus(wallet),
                     fetchOgStatus(wallet)
                 ]);
 
-                row.querySelector(".untitled-status").innerText = untitledStatus;
+                row.querySelector(".kyo-status").innerText = kyoStatus;
                 row.querySelector(".sake-status").innerText = sakeStatus;
+                row.querySelector(".untitled-status").innerText = untitledStatus;
                 row.querySelector(".og-status").innerText = ogStatus;
             }
         }
