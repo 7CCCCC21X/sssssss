@@ -87,6 +87,7 @@
   <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
   <script>
+    // ✅ **所有接口地址**
     const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
     const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
     const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
@@ -94,12 +95,39 @@
     const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
     const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
 
+    async function fetchKyoStatus(wallet) {
+      try {
+        let response = await fetch(kyoApiUrlPrimary + wallet);
+        let data = await response.json();
+        if (data.eligible) return "✅ 有";
+      } catch (error) {
+        console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
+      }
+
+      try {
+        let response = await fetch(kyoApiUrlBackup + wallet);
+        let data = await response.json();
+        return data.eligible ? "✅ 有" : "❌ 无";
+      } catch (error) {
+        console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
+
+    async function fetchSakeStatus(wallet) {
+      try {
+        let response = await fetch(sakeApiUrl + wallet);
+        let data = await response.json();
+        return data.met_all_requirements ? "✅ 有" : "❌ 无";
+      } catch (error) {
+        console.error(`Sake 查询失败: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
+
     async function fetchUntitledStatus(wallet) {
       try {
-        // ✅ **前端先转换地址为 EIP-55 格式**
         wallet = ethers.utils.getAddress(wallet);
-
-        // ✅ **防止缓存，添加时间戳**
         const timestamp = new Date().getTime();
         const response = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${timestamp}`);
         const data = await response.json();
@@ -108,6 +136,24 @@
         return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
       } catch (error) {
         console.error(`Untitled 查询失败: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
+
+    async function fetchOgStatus(wallet) {
+      try {
+        let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
+        let data = await response.json();
+        if (data.items) {
+          for (let item of data.items) {
+            if (item.token.address.toLowerCase() === ogNftContract.toLowerCase()) {
+              return "✅ 有";
+            }
+          }
+        }
+        return "❌ 无";
+      } catch (error) {
+        console.error(`OG 查询失败: ${wallet}`, error);
         return "❌ 无";
       }
     }
@@ -125,12 +171,24 @@
         row.innerHTML = `
           <td>${i + 1}</td>
           <td>${wallet}</td>
+          <td class="kyo-status">查询中...</td>
+          <td class="sake-status">查询中...</td>
           <td class="untitled-status">查询中...</td>
+          <td class="og-status">查询中...</td>
         `;
         tableBody.appendChild(row);
 
-        let untitledStatus = await fetchUntitledStatus(wallet);
+        let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
+          fetchKyoStatus(wallet),
+          fetchSakeStatus(wallet),
+          fetchUntitledStatus(wallet),
+          fetchOgStatus(wallet)
+        ]);
+
+        row.querySelector(".kyo-status").innerText = kyoStatus;
+        row.querySelector(".sake-status").innerText = sakeStatus;
         row.querySelector(".untitled-status").innerText = untitledStatus;
+        row.querySelector(".og-status").innerText = ogStatus;
       }
     }
   </script>
