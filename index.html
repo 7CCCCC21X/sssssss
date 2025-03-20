@@ -86,46 +86,23 @@
     <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
     <script>
-        const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions";
+        const vercelApiBase = "https://sssssss-e758bc8ar-7ccccc21xs-projects.vercel.app/api/proxy";
         const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
         const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
         const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
         const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
-        const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d"; 
-
-        async function fetchUntitledData() {
-            try {
-                console.log(`请求 Untitled 数据: ${untitledApiUrl}`);
-                let response = await fetch(untitledApiUrl);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP 错误! 状态: ${response.status}`);
-                }
-
-                let data = await response.json();
-                console.log("获取的 Untitled 数据:", data);
-                return data;
-            } catch (error) {
-                console.error("Untitled API 查询失败:", error);
-                return {};
-            }
-        }
+        const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
 
         async function fetchKyoStatus(wallet) {
             try {
                 let response = await fetch(kyoApiUrlPrimary + wallet);
                 let data = await response.json();
-                console.log(`KYO 主接口返回数据:`, data);
-                
                 if (data.eligible) return "✅ 有";
-                
-                // 如果 eligible 为 false，则尝试备用接口
-                console.log(`KYO 主接口返回未完成，尝试备用接口：${wallet}`);
             } catch (error) {
                 console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
             }
 
-            // 备用接口
+            // 备用 API 查询
             try {
                 let response = await fetch(kyoApiUrlBackup + wallet);
                 let data = await response.json();
@@ -136,12 +113,25 @@
             }
         }
 
+        async function fetchUntitledStatus(wallet) {
+            try {
+                let startBlock = 4085424;
+                let endBlock = 5165422;
+                let response = await fetch(`${vercelApiBase}?address=${wallet}&start=${startBlock}&end=${endBlock}`);
+                let data = await response.json();
+                let txCount = data.length || 0;
+
+                return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
+            } catch (error) {
+                console.error(`Untitled 查询失败: ${wallet}`, error);
+                return "❌ 无";
+            }
+        }
+
         async function queryBadges() {
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
             const tableBody = document.querySelector("#resultTable tbody");
             tableBody.innerHTML = ""; 
-
-            let untitledData = await fetchUntitledData();
 
             for (let i = 0; i < walletList.length; i++) {
                 let wallet = walletList[i];
@@ -163,7 +153,7 @@
                 `;
                 tableBody.appendChild(row);
 
-                // ✅ 查询 KYO 徽章（如果主接口 eligible=false，则查备用接口）
+                // ✅ 查询 KYO 徽章
                 kyoStatus = await fetchKyoStatus(wallet);
 
                 // ✅ 查询 Sake（原Stats）徽章
@@ -175,14 +165,8 @@
                     console.error(`Sake 查询失败: ${wallet}`, error);
                 }
 
-                // ✅ 查询 Untitled 徽章
-                try {
-                    let matchingKey = Object.keys(untitledData).find(k => k.toLowerCase() === wallet.toLowerCase());
-                    let txCount = matchingKey ? parseInt(untitledData[matchingKey]) : 0;
-                    untitledStatus = txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
-                } catch (error) {
-                    console.error(`Untitled 查询失败: ${wallet}`, error);
-                }
+                // ✅ 查询 Untitled 徽章（根据交易次数）
+                untitledStatus = await fetchUntitledStatus(wallet);
 
                 // ✅ 查询 OG 徽章
                 try {
