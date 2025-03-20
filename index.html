@@ -1,215 +1,217 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>索尼 徽章批量查询</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            text-align: center;
-        }
-        textarea {
-            width: 100%;
-            height: 150px;
-            font-size: 16px;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        button {
-            margin-top: 10px;
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .result {
-            margin-top: 20px;
-            text-align: center;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #007bff;
-            color: white;
-        }
-        .badge-link {
-            text-decoration: none;
-            color: white;
-            font-weight: bold;
-        }
-        .badge-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>索尼 徽章批量查询</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      text-align: center;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    .badge-link {
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+    }
+    .badge-link:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-    <h2>索尼 徽章批量查询</h2>
-    <p>输入钱包地址（每行一个）：</p>
-    <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea>
-    <br>
-    <button onclick="queryBadges()">查询</button>
-    <button onclick="exportToCSV()">导出 CSV</button>
-    <div id="output" class="result">
-        <table id="resultTable">
-            <thead>
-                <tr>
-                    <th>编号</th>
-                    <th>地址</th>
-                    <th><a href="https://app.kyo.finance/" target="_blank" class="badge-link">KYO徽章</a></th>
-                    <th><a href="https://app.sakefinance.com/" target="_blank" class="badge-link">Sake徽章</a></th>
-                    <th><a href="https://app.untitledbank.co/" target="_blank" class="badge-link">Untitled徽章</a></th>
-                    <th>OG 徽章</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
+  <h2>索尼 徽章批量查询</h2>
+  <p>输入钱包地址（每行一个）：</p>
+  <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea>
+  <br>
+  <button onclick="queryBadges()">查询</button>
+  <button onclick="exportToCSV()">导出 CSV</button>
+  <div id="output" class="result">
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>编号</th>
+          <th>地址</th>
+          <th><a href="https://app.kyo.finance/" target="_blank" class="badge-link">KYO徽章</a></th>
+          <th><a href="https://app.sakefinance.com/" target="_blank" class="badge-link">Sake徽章</a></th>
+          <th><a href="https://app.untitledbank.co/" target="_blank" class="badge-link">Untitled徽章</a></th>
+          <th>OG 徽章</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
-    <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
+  <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
-    <script>
-        const vercelApiBase = "https://sssssss-e758bc8ar-7ccccc21xs-projects.vercel.app/api/proxy";
-        const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
-        const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
-        const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
-        const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
-        const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
+  <script>
+    // 更新后的 vercel 代理接口地址（无路径）
+    const vercelApiBase = "https://sssssss-cum7tg1os-7ccccc21xs-projects.vercel.app";
+    const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
+    const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
+    const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+    const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
+    const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
 
-        async function fetchKyoStatus(wallet) {
-            try {
-                let response = await fetch(kyoApiUrlPrimary + wallet);
-                let data = await response.json();
-                if (data.eligible) return "✅ 有";
-            } catch (error) {
-                console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
+    async function fetchKyoStatus(wallet) {
+      try {
+        let response = await fetch(kyoApiUrlPrimary + wallet);
+        let data = await response.json();
+        if (data.eligible) return "✅ 有";
+      } catch (error) {
+        console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
+      }
+
+      try {
+        let response = await fetch(kyoApiUrlBackup + wallet);
+        let data = await response.json();
+        return data.eligible ? "✅ 有" : "❌ 无";
+      } catch (error) {
+        console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
+
+    async function fetchSakeStatus(wallet) {
+      try {
+        let response = await fetch(sakeApiUrl + wallet);
+        let data = await response.json();
+        return data.met_all_requirements ? "✅ 有" : "❌ 无";
+      } catch (error) {
+        console.error(`Sake 查询失败: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
+
+    // 通过 vercel 代理接口查询 Untitled 徽章，根据返回数据中 "length" 值判断
+    async function fetchUntitledStatus(wallet) {
+      try {
+        // 直接使用 vercel 代理接口，不再添加 /api/proxy 路径
+        const response = await fetch(`${vercelApiBase}?address=${wallet}&start=4085424&end=5165422`);
+        const data = await response.json();
+        const txCount = data.length ?? 0;
+        return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
+      } catch (error) {
+        console.error(`Untitled 查询失败: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
+
+    async function fetchOgStatus(wallet) {
+      try {
+        let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
+        let data = await response.json();
+        if (data.items) {
+          for (let item of data.items) {
+            if (item.token.address.toLowerCase() === ogNftContract.toLowerCase()) {
+              return "✅ 有";
             }
-
-            try {
-                let response = await fetch(kyoApiUrlBackup + wallet);
-                let data = await response.json();
-                return data.eligible ? "✅ 有" : "❌ 无";
-            } catch (error) {
-                console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
-                return "❌ 无";
-            }
+          }
         }
+        return "❌ 无";
+      } catch (error) {
+        console.error(`OG 查询失败: ${wallet}`, error);
+        return "❌ 无";
+      }
+    }
 
-        async function fetchSakeStatus(wallet) {
-            try {
-                let response = await fetch(sakeApiUrl + wallet);
-                let data = await response.json();
-                return data.met_all_requirements ? "✅ 有" : "❌ 无";
-            } catch (error) {
-                console.error(`Sake 查询失败: ${wallet}`, error);
-                return "❌ 无";
-            }
+    async function queryBadges() {
+      const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
+      const tableBody = document.querySelector("#resultTable tbody");
+      tableBody.innerHTML = "";
+
+      for (let i = 0; i < walletList.length; i++) {
+        let wallet = walletList[i];
+        if (!wallet) continue;
+
+        let row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${wallet}</td>
+          <td class="kyo-status">查询中...</td>
+          <td class="sake-status">查询中...</td>
+          <td class="untitled-status">查询中...</td>
+          <td class="og-status">查询中...</td>
+        `;
+        tableBody.appendChild(row);
+
+        // 并行查询，提高查询速度
+        let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
+          fetchKyoStatus(wallet),
+          fetchSakeStatus(wallet),
+          fetchUntitledStatus(wallet),
+          fetchOgStatus(wallet)
+        ]);
+
+        row.querySelector(".kyo-status").innerText = kyoStatus;
+        row.querySelector(".sake-status").innerText = sakeStatus;
+        row.querySelector(".untitled-status").innerText = untitledStatus;
+        row.querySelector(".og-status").innerText = ogStatus;
+      }
+    }
+
+    function exportToCSV() {
+      const table = document.getElementById("resultTable");
+      let csvContent = "";
+
+      for (let row of table.rows) {
+        let rowData = [];
+        for (let cell of row.cells) {
+          rowData.push(cell.innerText);
         }
+        csvContent += rowData.join(",") + "\n";
+      }
 
-        // 使用新接口查询 Untitled 徽章，根据返回数据中 "length" 值判断
-        async function fetchUntitledStatus(wallet) {
-            try {
-                const response = await fetch(`https://tx-api.untitledbank.co/user-txs?address=${wallet}&start=4085424&end=5165422`);
-                const data = await response.json();
-                const txCount = data.length ?? 0;
-                return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
-            } catch (error) {
-                console.error(`Untitled 查询失败: ${wallet}`, error);
-                return "❌ 无";
-            }
-        }
-
-        async function fetchOgStatus(wallet) {
-            try {
-                let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
-                let data = await response.json();
-                if (data.items) {
-                    for (let item of data.items) {
-                        if (item.token.address.toLowerCase() === ogNftContract.toLowerCase()) {
-                            return "✅ 有";
-                        }
-                    }
-                }
-                return "❌ 无";
-            } catch (error) {
-                console.error(`OG 查询失败: ${wallet}`, error);
-                return "❌ 无";
-            }
-        }
-
-        async function queryBadges() {
-            const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
-            const tableBody = document.querySelector("#resultTable tbody");
-            tableBody.innerHTML = "";
-
-            for (let i = 0; i < walletList.length; i++) {
-                let wallet = walletList[i];
-                if (!wallet) continue;
-
-                let row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${i + 1}</td>
-                    <td>${wallet}</td>
-                    <td class="kyo-status">查询中...</td>
-                    <td class="sake-status">查询中...</td>
-                    <td class="untitled-status">查询中...</td>
-                    <td class="og-status">查询中...</td>
-                `;
-                tableBody.appendChild(row);
-
-                // 并行查询，提高查询速度
-                let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
-                    fetchKyoStatus(wallet),
-                    fetchSakeStatus(wallet),
-                    fetchUntitledStatus(wallet),
-                    fetchOgStatus(wallet)
-                ]);
-
-                row.querySelector(".kyo-status").innerText = kyoStatus;
-                row.querySelector(".sake-status").innerText = sakeStatus;
-                row.querySelector(".untitled-status").innerText = untitledStatus;
-                row.querySelector(".og-status").innerText = ogStatus;
-            }
-        }
-
-        function exportToCSV() {
-            const table = document.getElementById("resultTable");
-            let csvContent = "";
-
-            for (let row of table.rows) {
-                let rowData = [];
-                for (let cell of row.cells) {
-                    rowData.push(cell.innerText);
-                }
-                csvContent += rowData.join(",") + "\n";
-            }
-
-            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "badge_results.csv";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-    </script>
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "badge_results.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  </script>
 </body>
 </html>
