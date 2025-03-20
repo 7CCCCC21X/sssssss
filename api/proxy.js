@@ -22,10 +22,7 @@ export default async function handler(req, res) {
             method: "GET",
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "Accept": "application/json",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
+                "Accept": "application/json"
             },
             timeout: 10000
         });
@@ -37,22 +34,15 @@ export default async function handler(req, res) {
 
         const data = await response.json();
 
-        if (!data || !data.transactions || !Array.isArray(data.transactions)) {
+        if (!data || typeof data.length !== "number") {
             console.error("❌ API 返回数据异常:", data);
             return res.status(500).json({ error: "API 返回数据异常", data });
         }
 
-        // 计算交易次数
-        const transactionCount = data.transactions.length;
-        const isCompleted = transactionCount >= 10; // 是否达到完成标准
+        console.log(`✅ 查询成功，交易次数: ${data.length}`);
 
-        console.log(`✅ 查询成功，交易次数: ${transactionCount}, 是否完成: ${isCompleted}`);
-
-        return res.status(200).json({
-            ...data,
-            transaction_count: transactionCount,
-            is_completed: isCompleted // 返回一个标记字段
-        });
+        // 返回 `length` 字段
+        return res.status(200).json({ transaction_count: data.length });
 
     } catch (error) {
         console.error("🚨 API 请求失败:", error);
