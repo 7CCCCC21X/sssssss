@@ -86,11 +86,12 @@
     <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
     <script>
-        const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions"; // Vercel API
-        const kyoApiUrl = "https://api.cluster.kyo.finance/quest/1868/0/verify?address="; // ✅ 更新的 KYO 查询接口
+        const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions";
+        const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
+        const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
         const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
         const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
-        const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d"; // OG 徽章合约地址
+        const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d"; 
 
         async function fetchUntitledData() {
             try {
@@ -110,10 +111,35 @@
             }
         }
 
+        async function fetchKyoStatus(wallet) {
+            try {
+                let response = await fetch(kyoApiUrlPrimary + wallet);
+                let data = await response.json();
+                console.log(`KYO 主接口返回数据:`, data);
+                
+                if (data.eligible) return "✅ 有";
+                
+                // 如果 eligible 为 false，则尝试备用接口
+                console.log(`KYO 主接口返回未完成，尝试备用接口：${wallet}`);
+            } catch (error) {
+                console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
+            }
+
+            // 备用接口
+            try {
+                let response = await fetch(kyoApiUrlBackup + wallet);
+                let data = await response.json();
+                return data.eligible ? "✅ 有" : "❌ 无";
+            } catch (error) {
+                console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
+                return "❌ 无";
+            }
+        }
+
         async function queryBadges() {
             const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
             const tableBody = document.querySelector("#resultTable tbody");
-            tableBody.innerHTML = ""; // 清空之前的结果
+            tableBody.innerHTML = ""; 
 
             let untitledData = await fetchUntitledData();
 
@@ -137,14 +163,8 @@
                 `;
                 tableBody.appendChild(row);
 
-                // ✅ 查询 KYO 徽章（更新接口）
-                try {
-                    let response = await fetch(kyoApiUrl + wallet);
-                    let data = await response.json();
-                    kyoStatus = data.eligible === true ? "✅ 有" : "❌ 无";
-                } catch (error) {
-                    console.error(`KYO 查询失败: ${wallet}`, error);
-                }
+                // ✅ 查询 KYO 徽章（如果主接口 eligible=false，则查备用接口）
+                kyoStatus = await fetchKyoStatus(wallet);
 
                 // ✅ 查询 Sake（原Stats）徽章
                 try {
@@ -155,13 +175,10 @@
                     console.error(`Sake 查询失败: ${wallet}`, error);
                 }
 
-                // ✅ 查询 Untitled 徽章（修正大小写匹配）
+                // ✅ 查询 Untitled 徽章
                 try {
                     let matchingKey = Object.keys(untitledData).find(k => k.toLowerCase() === wallet.toLowerCase());
                     let txCount = matchingKey ? parseInt(untitledData[matchingKey]) : 0;
-                    
-                    console.log(`钱包 ${wallet} -> 交易次数: ${txCount}`);
-
                     untitledStatus = txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
                 } catch (error) {
                     console.error(`Untitled 查询失败: ${wallet}`, error);
@@ -183,7 +200,6 @@
                     console.error(`OG 查询失败: ${wallet}`, error);
                 }
 
-                // 更新表格的这一行
                 row.querySelector(".kyo-status").innerText = kyoStatus;
                 row.querySelector(".sake-status").innerText = sakeStatus;
                 row.querySelector(".untitled-status").innerText = untitledStatus;
