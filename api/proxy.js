@@ -13,16 +13,21 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "缺少必要参数" });
     }
 
-    const targetUrl = `https://tx-api.untitledbank.co/user-txs?address=${encodeURIComponent(address)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    // 目标 API URL，添加时间戳参数，防止缓存
+    const targetUrl = `https://tx-api.untitledbank.co/user-txs?address=${encodeURIComponent(address)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&t=${Date.now()}`;
+
+    // ✅ 打印 URL，确保它是正确的
+    console.log(`🚀 正在请求 API: ${targetUrl}`);
 
     try {
-        console.log(`🚀 正在请求 API: ${targetUrl}`);
-
         const response = await fetch(targetUrl, {
             method: "GET",
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "Accept": "application/json"
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
             },
             timeout: 10000
         });
@@ -33,16 +38,11 @@ export default async function handler(req, res) {
         }
 
         const data = await response.json();
+        
+        // ✅ 打印返回的数据，确保 transactions 正确
+        console.log("✅ API 返回数据:", JSON.stringify(data, null, 2));
 
-        if (!data || typeof data.length !== "number") {
-            console.error("❌ API 返回数据异常:", data);
-            return res.status(500).json({ error: "API 返回数据异常", data });
-        }
-
-        console.log(`✅ 查询成功，交易次数: ${data.length}`);
-
-        // 返回 `length` 字段
-        return res.status(200).json({ transaction_count: data.length });
+        return res.status(200).json(data);
 
     } catch (error) {
         console.error("🚨 API 请求失败:", error);
