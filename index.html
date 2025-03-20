@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 700px;
+            max-width: 800px;
             margin: 20px auto;
             text-align: center;
         }
@@ -47,15 +47,16 @@
             text-align: center;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #007bff;
+            color: white;
         }
-        .loading {
+        .badge-link {
+            text-decoration: none;
+            color: white;
             font-weight: bold;
-            color: blue;
         }
-        .twitter {
-            margin-top: 20px;
-            font-size: 14px;
+        .badge-link:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -72,9 +73,10 @@
                 <tr>
                     <th>编号</th>
                     <th>地址</th>
-                    <th>KYO徽章</th>
-                    <th>Stats徽章</th>
-                    <th>Untitled徽章</th>
+                    <th><a href="https://app.kyo.finance/" target="_blank" class="badge-link">KYO徽章</a></th>
+                    <th><a href="https://app.sakefinance.com/" target="_blank" class="badge-link">Sake徽章</a></th>
+                    <th><a href="https://app.untitledbank.co/" target="_blank" class="badge-link">Untitled徽章</a></th>
+                    <th>OG 徽章</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -86,7 +88,9 @@
     <script>
         const untitledApiUrl = "https://sssssss-mu2omrfvg-7ccccc21xs-projects.vercel.app/api/wallet-transactions"; // Vercel API
         const kyoApiUrl = "https://api.kyo.finance/quests/1868/1/verify?address=";
-        const statsApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+        const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+        const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
+        const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d"; // OG 徽章合约地址
 
         async function fetchUntitledData() {
             try {
@@ -117,17 +121,19 @@
                 let wallet = walletList[i];
                 if (!wallet) continue;
 
-                let kyoStatus = "❌ 查询失败";
-                let statsStatus = "❌ 查询失败";
-                let untitledStatus = "❌ 查询失败";
+                let kyoStatus = "❌ 无";
+                let sakeStatus = "❌ 无";
+                let untitledStatus = "❌ 无";
+                let ogStatus = "❌ 无";
 
                 let row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${i + 1}</td>
                     <td>${wallet}</td>
                     <td class="kyo-status">查询中...</td>
-                    <td class="stats-status">查询中...</td>
+                    <td class="sake-status">查询中...</td>
                     <td class="untitled-status">查询中...</td>
+                    <td class="og-status">查询中...</td>
                 `;
                 tableBody.appendChild(row);
 
@@ -135,18 +141,18 @@
                 try {
                     let response = await fetch(kyoApiUrl + wallet);
                     let data = await response.json();
-                    kyoStatus = data.eligible === true ? "✅ 已完成" : "❌ 未完成";
+                    kyoStatus = data.eligible === true ? "✅ 有" : "❌ 无";
                 } catch (error) {
                     console.error(`KYO 查询失败: ${wallet}`, error);
                 }
 
-                // ✅ 查询 Stats 徽章
+                // ✅ 查询 Sake（原Stats）徽章
                 try {
-                    let response = await fetch(statsApiUrl + wallet);
+                    let response = await fetch(sakeApiUrl + wallet);
                     let data = await response.json();
-                    statsStatus = data.met_all_requirements === true ? "✅ 已完成" : "❌ 未完成";
+                    sakeStatus = data.met_all_requirements === true ? "✅ 有" : "❌ 无";
                 } catch (error) {
-                    console.error(`Stats 查询失败: ${wallet}`, error);
+                    console.error(`Sake 查询失败: ${wallet}`, error);
                 }
 
                 // ✅ 查询 Untitled 徽章（修正大小写匹配）
@@ -156,38 +162,33 @@
                     
                     console.log(`钱包 ${wallet} -> 交易次数: ${txCount}`);
 
-                    untitledStatus = txCount >= 10 ? "✅ 已完成" : `❌ 未完成 (${txCount})`;
+                    untitledStatus = txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
                 } catch (error) {
                     console.error(`Untitled 查询失败: ${wallet}`, error);
                 }
 
+                // ✅ 查询 OG 徽章
+                try {
+                    let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
+                    let data = await response.json();
+                    if (data.items) {
+                        for (let item of data.items) {
+                            if (item.token.address.toLowerCase() === ogNftContract.toLowerCase()) {
+                                ogStatus = "✅ 有";
+                                break;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(`OG 查询失败: ${wallet}`, error);
+                }
+
                 // 更新表格的这一行
                 row.querySelector(".kyo-status").innerText = kyoStatus;
-                row.querySelector(".stats-status").innerText = statsStatus;
+                row.querySelector(".sake-status").innerText = sakeStatus;
                 row.querySelector(".untitled-status").innerText = untitledStatus;
+                row.querySelector(".og-status").innerText = ogStatus;
             }
-        }
-
-        function exportToCSV() {
-            const rows = document.querySelectorAll("#resultTable tbody tr");
-            if (rows.length === 0) {
-                alert("请先进行查询！");
-                return;
-            }
-
-            let csvContent = "编号,钱包地址,KYO徽章,Stats徽章,Untitled徽章\n";
-            rows.forEach(row => {
-                let cols = row.querySelectorAll("td");
-                let rowData = Array.from(cols).map(col => col.innerText).join(",");
-                csvContent += rowData + "\n";
-            });
-
-            let encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "Badge_Check.csv");
-            document.body.appendChild(link);
-            link.click();
         }
     </script>
 </body>
