@@ -30,7 +30,11 @@
       border: none;
       border-radius: 5px;
     }
-    button:hover {
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    button:hover:enabled {
       background-color: #45a049;
     }
     .result {
@@ -66,12 +70,15 @@
   <p>输入钱包地址（每行一个）：</p>
   <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea>
   <br>
-  <button onclick="queryBadges()">查询</button>
-  <button onclick="exportToCSV()">导出 CSV</button>
+  <button id="queryAllBtn" onclick="queryAndLoadWallets()">查询</button>
+  <button onclick="querySelectedBadges()">查询勾选地址</button>
+  <button onclick="exportSelectedToCSV()">导出 CSV</button>
+
   <div id="output" class="result">
     <table id="resultTable">
       <thead>
         <tr>
+          <th><input type="checkbox" id="selectAllCheckbox" onclick="toggleAllCheckboxes(this.checked)"></th>
           <th>编号</th>
           <th>地址</th>
           <th><a href="https://app.kyo.finance/" target="_blank" class="badge-link">KYO徽章</a></th>
@@ -87,7 +94,6 @@
   <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
   <script>
-    // ✅ **所有接口地址**
     const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
     const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
     const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
@@ -100,16 +106,12 @@
         let response = await fetch(kyoApiUrlPrimary + wallet);
         let data = await response.json();
         if (data.eligible) return "✅ 有";
-      } catch (error) {
-        console.warn(`KYO 查询失败（主接口），尝试备用接口: ${wallet}`, error);
-      }
-
+      } catch {}
       try {
         let response = await fetch(kyoApiUrlBackup + wallet);
         let data = await response.json();
         return data.eligible ? "✅ 有" : "❌ 无";
-      } catch (error) {
-        console.error(`KYO 查询失败（备用接口）: ${wallet}`, error);
+      } catch {
         return "❌ 无";
       }
     }
@@ -119,8 +121,7 @@
         let response = await fetch(sakeApiUrl + wallet);
         let data = await response.json();
         return data.met_all_requirements ? "✅ 有" : "❌ 无";
-      } catch (error) {
-        console.error(`Sake 查询失败: ${wallet}`, error);
+      } catch {
         return "❌ 无";
       }
     }
@@ -128,47 +129,40 @@
     async function fetchUntitledStatus(wallet) {
       try {
         wallet = ethers.utils.getAddress(wallet);
-        const timestamp = new Date().getTime();
+        const timestamp = Date.now();
         const response = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${timestamp}`);
         const data = await response.json();
-
         const txCount = data.transactions?.length ?? 0;
         return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
-      } catch (error) {
-        console.error(`Untitled 查询失败: ${wallet}`, error);
+      } catch {
         return "❌ 无";
       }
     }
 
     async function fetchOgStatus(wallet) {
       try {
-        let response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
-        let data = await response.json();
-        if (data.items) {
-          for (let item of data.items) {
-            if (item.token.address.toLowerCase() === ogNftContract.toLowerCase()) {
-              return "✅ 有";
-            }
-          }
-        }
-        return "❌ 无";
-      } catch (error) {
-        console.error(`OG 查询失败: ${wallet}`, error);
+        const response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
+        const data = await response.json();
+        const items = data.items || [];
+        return items.some(item => item.token.address.toLowerCase() === ogNftContract.toLowerCase()) ? "✅ 有" : "❌ 无";
+      } catch {
         return "❌ 无";
       }
     }
 
-    async function queryBadges() {
-      const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim());
+    async function queryAndLoadWallets() {
+      const queryBtn = document.getElementById("queryAllBtn");
+      queryBtn.disabled = true;
+
+      const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
       const tableBody = document.querySelector("#resultTable tbody");
       tableBody.innerHTML = "";
 
       for (let i = 0; i < walletList.length; i++) {
-        let wallet = walletList[i];
-        if (!wallet) continue;
-
-        let row = document.createElement("tr");
+        const wallet = walletList[i];
+        const row = document.createElement("tr");
         row.innerHTML = `
+          <td><input type="checkbox" class="wallet-checkbox" data-wallet="${wallet}" /></td>
           <td>${i + 1}</td>
           <td>${wallet}</td>
           <td class="kyo-status">查询中...</td>
@@ -190,6 +184,56 @@
         row.querySelector(".untitled-status").innerText = untitledStatus;
         row.querySelector(".og-status").innerText = ogStatus;
       }
+
+      queryBtn.disabled = false;
+    }
+
+    async function querySelectedBadges() {
+      const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+      for (let checkbox of selected) {
+        const wallet = checkbox.dataset.wallet;
+        const row = checkbox.closest("tr");
+
+        row.querySelector(".kyo-status").innerText = "查询中...";
+        row.querySelector(".sake-status").innerText = "查询中...";
+        row.querySelector(".untitled-status").innerText = "查询中...";
+        row.querySelector(".og-status").innerText = "查询中...";
+
+        let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
+          fetchKyoStatus(wallet),
+          fetchSakeStatus(wallet),
+          fetchUntitledStatus(wallet),
+          fetchOgStatus(wallet)
+        ]);
+
+        row.querySelector(".kyo-status").innerText = kyoStatus;
+        row.querySelector(".sake-status").innerText = sakeStatus;
+        row.querySelector(".untitled-status").innerText = untitledStatus;
+        row.querySelector(".og-status").innerText = ogStatus;
+      }
+    }
+
+    function toggleAllCheckboxes(checked) {
+      document.querySelectorAll(".wallet-checkbox").forEach(cb => cb.checked = checked);
+    }
+
+    function exportSelectedToCSV() {
+      const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+      let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章\n";
+      selected.forEach((checkbox, index) => {
+        const row = checkbox.closest("tr");
+        const cells = row.querySelectorAll("td");
+        const rowData = [index + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText];
+        csv += rowData.join(",") + "\n";
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "selected_badges.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
 </body>
