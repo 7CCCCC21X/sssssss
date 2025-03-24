@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/soneium",
+      "destination": "/soneium.html"
+    },
+    {
+      "source": "/badge",
+      "destination": "/index.html"
+    }
+  ]
+}
