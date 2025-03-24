@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>索尼 徽章批量查询</title>
+  <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
@@ -66,6 +67,12 @@
   </style>
 </head>
 <body>
+  <!-- 导航栏 -->
+  <nav style="background:#f0f0f0;padding:12px 20px;margin-bottom:20px;font-size:16px;">
+    <a href="badge">🏠 徽章查询</a> |
+    <a href="soneium">📊 活跃度查询</a>
+  </nav>
+
   <h2>索尼 徽章批量查询</h2>
   <p>输入钱包地址（每行一个）：</p>
   <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea>
@@ -185,6 +192,19 @@
         row.querySelector(".og-status").innerText = ogStatus;
       }
 
+      // 保存查询结果到 localStorage
+      const queryResults = Array.from(tableBody.rows).map(row => ({
+        wallet: row.cells[2].innerText,
+        kyo: row.querySelector(".kyo-status").innerText,
+        sake: row.querySelector(".sake-status").innerText,
+        untitled: row.querySelector(".untitled-status").innerText,
+        og: row.querySelector(".og-status").innerText
+      }));
+      localStorage.setItem("queryResults", JSON.stringify(queryResults));
+
+      // 保存钱包地址到 localStorage
+      localStorage.setItem("wallets", JSON.stringify(walletList));
+
       queryBtn.disabled = false;
     }
 
@@ -235,6 +255,36 @@
       link.click();
       document.body.removeChild(link);
     }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // 加载缓存的地址
+      const cachedWallets = localStorage.getItem("wallets");
+      if (cachedWallets) {
+        document.getElementById("wallets").value = JSON.parse(cachedWallets).join("\n");
+      }
+
+      // 加载缓存的查询结果
+      const cachedResults = localStorage.getItem("queryResults");
+      if (cachedResults) {
+        const results = JSON.parse(cachedResults);
+        const tableBody = document.querySelector("#resultTable tbody");
+        tableBody.innerHTML = "";
+        
+        results.forEach((result, index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input type="checkbox" class="wallet-checkbox" data-wallet="${result.wallet}" checked /></td>
+            <td>${index + 1}</td>
+            <td>${result.wallet}</td>
+            <td class="kyo-status">${result.kyo}</td>
+            <td class="sake-status">${result.sake}</td>
+            <td class="untitled-status">${result.untitled}</td>
+            <td class="og-status">${result.og}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+      }
+    });
   </script>
 </body>
 </html>
