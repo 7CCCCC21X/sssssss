@@ -9,7 +9,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 1000px;
       margin: 20px auto;
       text-align: center;
     }
@@ -22,7 +22,7 @@
       border: 1px solid #ccc;
     }
     button {
-      margin-top: 10px;
+      margin: 10px 5px;
       padding: 10px 15px;
       font-size: 16px;
       cursor: pointer;
@@ -38,19 +38,17 @@
     button:hover:enabled {
       background-color: #45a049;
     }
-    .result {
-      margin-top: 20px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 20px;
     }
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
       text-align: center;
       white-space: nowrap;
+      font-size: 15px;
     }
     th {
       background-color: #007bff;
@@ -107,20 +105,21 @@
     const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
     const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
 
+    const format = (value) => value === true ? "✅ 有" : (typeof value === "string" ? value : "❌ 无");
+
     let sonovaShortSet = new Set();
     async function loadSonovaShorts() {
+      if (sonovaShortSet.size > 0) return;
       const res = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
       const text = await res.text();
       const lines = text.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
-      lines.forEach(line => {
+      for (const line of lines) {
         if (line.includes("...")) {
           const [pre, post] = line.split("...");
           sonovaShortSet.add(pre.slice(0, 6) + post.slice(-4));
         }
-      });
+      }
     }
-
-    const format = (value) => value === true ? "✅ 有" : (typeof value === "string" ? value : "❌ 无");
 
     async function fetchSonovaStatus(wallet) {
       const short = wallet.slice(0, 6).toLowerCase() + wallet.slice(-4).toLowerCase();
@@ -176,11 +175,12 @@
       }
     }
 
-    async function queryWallets(wallets) {
+    async function queryAndLoadWallets() {
+      const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
       await loadSonovaShorts();
-      const tableBody = document.querySelector("#resultTable tbody");
-      tableBody.innerHTML = "";
 
+      const tbody = document.querySelector("#resultTable tbody");
+      tbody.innerHTML = "";
       const results = [];
 
       for (let i = 0; i < wallets.length; i++) {
@@ -196,7 +196,7 @@
           <td class="og-status">查询中...</td>
           <td class="sonova-status">查询中...</td>
         `;
-        tableBody.appendChild(row);
+        tbody.appendChild(row);
 
         const [kyo, sake, untitled, og, sonova] = await Promise.all([
           fetchKyoStatus(wallet),
@@ -219,14 +219,9 @@
       localStorage.setItem("queryResults", JSON.stringify(results));
     }
 
-    async function queryAndLoadWallets() {
-      const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
-      queryWallets(wallets);
-    }
-
     async function querySelectedBadges() {
       await loadSonovaShorts();
-      const checkboxes = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+      const checkboxes = document.querySelectorAll(".wallet-checkbox:checked");
       for (const checkbox of checkboxes) {
         const wallet = checkbox.dataset.wallet;
         const row = checkbox.closest("tr");
@@ -258,13 +253,13 @@
     }
 
     function exportSelectedToCSV() {
-      const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+      const selected = document.querySelectorAll(".wallet-checkbox:checked");
       let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章,Sonova徽章\n";
       selected.forEach((cb, idx) => {
         const row = cb.closest("tr");
         const cells = row.querySelectorAll("td");
-        const values = [idx + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
-        csv += values.join(",") + "\n";
+        const data = [idx + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
+        csv += data.join(",") + "\n";
       });
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
@@ -275,31 +270,25 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-      const cached = localStorage.getItem("wallets");
-      if (cached) {
-        document.getElementById("wallets").value = JSON.parse(cached).join("\n");
-      }
+      const wallets = JSON.parse(localStorage.getItem("wallets") || "[]");
+      document.getElementById("wallets").value = wallets.join("\n");
 
-      const cachedResults = localStorage.getItem("queryResults");
-      if (cachedResults) {
-        const results = JSON.parse(cachedResults);
-        const tableBody = document.querySelector("#resultTable tbody");
-        tableBody.innerHTML = "";
-        results.forEach((r, i) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><input type="checkbox" class="wallet-checkbox" data-wallet="${r.wallet}" /></td>
-            <td>${i + 1}</td>
-            <td>${r.wallet}</td>
-            <td class="kyo-status">${format(r.kyo)}</td>
-            <td class="sake-status">${format(r.sake)}</td>
-            <td class="untitled-status">${format(r.untitled)}</td>
-            <td class="og-status">${format(r.og)}</td>
-            <td class="sonova-status">${format(r.sonova)}</td>
-          `;
-          tableBody.appendChild(row);
-        });
-      }
+      const results = JSON.parse(localStorage.getItem("queryResults") || "[]");
+      const tbody = document.querySelector("#resultTable tbody");
+      results.forEach((r, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><input type="checkbox" class="wallet-checkbox" data-wallet="${r.wallet}" /></td>
+          <td>${i + 1}</td>
+          <td>${r.wallet}</td>
+          <td class="kyo-status">${format(r.kyo)}</td>
+          <td class="sake-status">${format(r.sake)}</td>
+          <td class="untitled-status">${format(r.untitled)}</td>
+          <td class="og-status">${format(r.og)}</td>
+          <td class="sonova-status">${format(r.sonova)}</td>
+        `;
+        tbody.appendChild(row);
+      });
     });
   </script>
 </body>
