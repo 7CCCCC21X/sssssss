@@ -7,17 +7,63 @@
   <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; text-align: center; }
-    textarea { width: 100%; height: 150px; font-size: 16px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    button { margin-top: 10px; padding: 10px 15px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
-    button:disabled { background-color: #aaa; cursor: not-allowed; }
-    button:hover:enabled { background-color: #45a049; }
-    .result { margin-top: 20px; text-align: center; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background-color: #007bff; color: white; }
-    .badge-link { text-decoration: none; color: white; font-weight: bold; }
-    .badge-link:hover { text-decoration: underline; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      text-align: center;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    button:hover:enabled {
+      background-color: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    .badge-link {
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+    }
+    .badge-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -53,187 +99,208 @@
 
   <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
-<script>
-const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
-const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
-const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
-const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
-const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
-const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
+  <script>
+    const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
+    const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
+    const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+    const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
+    const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
+    const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
 
-let sonovaShortSet = new Set();
-
-async function loadSonovaShorts() {
-  const res = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
-  const text = await res.text();
-  const lines = text.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
-  lines.forEach(line => {
-    if (line.startsWith("0x") && line.includes("...")) {
-      const [pre, post] = line.split("...");
-      const short = pre.slice(0, 6) + post.slice(-4);
-      sonovaShortSet.add(short);
+    let sonovaShortSet = new Set();
+    async function loadSonovaShorts() {
+      const res = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
+      const text = await res.text();
+      const lines = text.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
+      lines.forEach(line => {
+        if (line.includes("...")) {
+          const [pre, post] = line.split("...");
+          sonovaShortSet.add(pre.slice(0, 6) + post.slice(-4));
+        }
+      });
     }
-  });
-}
 
-function getShortAddress(addr) {
-  return addr.slice(0, 6).toLowerCase() + addr.slice(-4).toLowerCase();
-}
+    const format = (value) => value === true ? "✅ 有" : (typeof value === "string" ? value : "❌ 无");
 
-async function fetchSonovaStatus(wallet) {
-  const short = getShortAddress(wallet);
-  return sonovaShortSet.has(short) ? "✅ 有" : "❌ 无";
-}
+    async function fetchSonovaStatus(wallet) {
+      const short = wallet.slice(0, 6).toLowerCase() + wallet.slice(-4).toLowerCase();
+      return sonovaShortSet.has(short) ? "✅ 有" : "❌ 无";
+    }
 
-async function fetchKyoStatus(wallet) {
-  try {
-    let res = await fetch(kyoApiUrlPrimary + wallet);
-    let data = await res.json();
-    if (data.eligible) return "✅ 有";
-  } catch {}
-  try {
-    let res = await fetch(kyoApiUrlBackup + wallet);
-    let data = await res.json();
-    return data.eligible ? "✅ 有" : "❌ 无";
-  } catch {
-    return "❌ 无";
-  }
-}
+    async function fetchKyoStatus(wallet) {
+      try {
+        let res = await fetch(kyoApiUrlPrimary + wallet);
+        let data = await res.json();
+        if (data.eligible) return "✅ 有";
+      } catch {}
+      try {
+        let res = await fetch(kyoApiUrlBackup + wallet);
+        let data = await res.json();
+        return data.eligible ? "✅ 有" : "❌ 无";
+      } catch {
+        return "❌ 无";
+      }
+    }
 
-async function fetchSakeStatus(wallet) {
-  try {
-    const res = await fetch(sakeApiUrl + wallet);
-    const data = await res.json();
-    return data.met_all_requirements ? "✅ 有" : "❌ 无";
-  } catch {
-    return "❌ 无";
-  }
-}
+    async function fetchSakeStatus(wallet) {
+      try {
+        const res = await fetch(sakeApiUrl + wallet);
+        const data = await res.json();
+        return data.met_all_requirements ? "✅ 有" : "❌ 无";
+      } catch {
+        return "❌ 无";
+      }
+    }
 
-async function fetchUntitledStatus(wallet) {
-  try {
-    wallet = ethers.utils.getAddress(wallet);
-    const t = Date.now();
-    const res = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${t}`);
-    const data = await res.json();
-    const txCount = data.transactions?.length ?? 0;
-    return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
-  } catch {
-    return "❌ 无";
-  }
-}
+    async function fetchUntitledStatus(wallet) {
+      try {
+        wallet = ethers.utils.getAddress(wallet);
+        const t = Date.now();
+        const res = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${t}`);
+        const data = await res.json();
+        const txCount = data.transactions?.length ?? 0;
+        return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
+      } catch {
+        return "❌ 无";
+      }
+    }
 
-async function fetchOgStatus(wallet) {
-  try {
-    const res = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
-    const data = await res.json();
-    const items = data.items || [];
-    return items.some(i => i.token.address.toLowerCase() === ogNftContract.toLowerCase()) ? "✅ 有" : "❌ 无";
-  } catch {
-    return "❌ 无";
-  }
-}
+    async function fetchOgStatus(wallet) {
+      try {
+        const res = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
+        const data = await res.json();
+        const items = data.items || [];
+        return items.some(i => i.token.address.toLowerCase() === ogNftContract.toLowerCase()) ? "✅ 有" : "❌ 无";
+      } catch {
+        return "❌ 无";
+      }
+    }
 
-async function queryWallets(wallets) {
-  const tableBody = document.querySelector("#resultTable tbody");
-  tableBody.innerHTML = "";
-  const results = [];
-  for (let i = 0; i < wallets.length; i++) {
-    const wallet = wallets[i];
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td><input type="checkbox" class="wallet-checkbox" data-wallet="${wallet}" /></td>
-      <td>${i + 1}</td>
-      <td>${wallet}</td>
-      <td class="kyo-status">查询中...</td>
-      <td class="sake-status">查询中...</td>
-      <td class="untitled-status">查询中...</td>
-      <td class="og-status">查询中...</td>
-      <td class="sonova-status">查询中...</td>
-    `;
-    tableBody.appendChild(row);
+    async function queryWallets(wallets) {
+      await loadSonovaShorts();
+      const tableBody = document.querySelector("#resultTable tbody");
+      tableBody.innerHTML = "";
 
-    const [kyo, sake, untitled, og, sonova] = await Promise.all([
-      fetchKyoStatus(wallet),
-      fetchSakeStatus(wallet),
-      fetchUntitledStatus(wallet),
-      fetchOgStatus(wallet),
-      fetchSonovaStatus(wallet)
-    ]);
+      const results = [];
 
-    row.querySelector(".kyo-status").innerText = kyo;
-    row.querySelector(".sake-status").innerText = sake;
-    row.querySelector(".untitled-status").innerText = untitled;
-    row.querySelector(".og-status").innerText = og;
-    row.querySelector(".sonova-status").innerText = sonova;
+      for (let i = 0; i < wallets.length; i++) {
+        const wallet = wallets[i];
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><input type="checkbox" class="wallet-checkbox" data-wallet="${wallet}" /></td>
+          <td>${i + 1}</td>
+          <td>${wallet}</td>
+          <td class="kyo-status">查询中...</td>
+          <td class="sake-status">查询中...</td>
+          <td class="untitled-status">查询中...</td>
+          <td class="og-status">查询中...</td>
+          <td class="sonova-status">查询中...</td>
+        `;
+        tableBody.appendChild(row);
 
-    results.push({ wallet, kyo, sake, untitled, og, sonova });
-  }
-  localStorage.setItem("wallets", JSON.stringify(wallets));
-  localStorage.setItem("queryResults", JSON.stringify(results));
-}
+        const [kyo, sake, untitled, og, sonova] = await Promise.all([
+          fetchKyoStatus(wallet),
+          fetchSakeStatus(wallet),
+          fetchUntitledStatus(wallet),
+          fetchOgStatus(wallet),
+          fetchSonovaStatus(wallet),
+        ]);
 
-async function queryAndLoadWallets() {
-  await loadSonovaShorts();
-  const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
-  queryWallets(wallets);
-}
+        row.querySelector(".kyo-status").innerText = format(kyo);
+        row.querySelector(".sake-status").innerText = format(sake);
+        row.querySelector(".untitled-status").innerText = format(untitled);
+        row.querySelector(".og-status").innerText = format(og);
+        row.querySelector(".sonova-status").innerText = format(sonova);
 
-async function querySelectedBadges() {
-  await loadSonovaShorts();
-  const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"))
-    .map(cb => cb.dataset.wallet);
-  queryWallets(selected);
-}
+        results.push({ wallet, kyo, sake, untitled, og, sonova });
+      }
 
-function toggleAllCheckboxes(checked) {
-  document.querySelectorAll(".wallet-checkbox").forEach(cb => cb.checked = checked);
-}
+      localStorage.setItem("wallets", JSON.stringify(wallets));
+      localStorage.setItem("queryResults", JSON.stringify(results));
+    }
 
-function exportSelectedToCSV() {
-  const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
-  let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章,Sonova徽章\n";
-  selected.forEach((cb, idx) => {
-    const row = cb.closest("tr");
-    const cells = row.querySelectorAll("td");
-    const values = [idx + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
-    csv += values.join(",") + "\n";
-  });
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "selected_badges.csv";
-  a.click();
-}
+    async function queryAndLoadWallets() {
+      const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
+      queryWallets(wallets);
+    }
 
-window.addEventListener("DOMContentLoaded", () => {
-  const cached = localStorage.getItem("wallets");
-  if (cached) {
-    document.getElementById("wallets").value = JSON.parse(cached).join("\n");
-  }
+    async function querySelectedBadges() {
+      await loadSonovaShorts();
+      const checkboxes = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+      for (const checkbox of checkboxes) {
+        const wallet = checkbox.dataset.wallet;
+        const row = checkbox.closest("tr");
 
-  const cachedResults = localStorage.getItem("queryResults");
-  if (cachedResults) {
-    const results = JSON.parse(cachedResults);
-    const tableBody = document.querySelector("#resultTable tbody");
-    tableBody.innerHTML = "";
-    results.forEach((r, i) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td><input type="checkbox" class="wallet-checkbox" data-wallet="${r.wallet}" checked /></td>
-        <td>${i + 1}</td>
-        <td>${r.wallet}</td>
-        <td class="kyo-status">${r.kyo}</td>
-        <td class="sake-status">${r.sake}</td>
-        <td class="untitled-status">${r.untitled}</td>
-        <td class="og-status">${r.og}</td>
-        <td class="sonova-status">${r.sonova}</td>
-      `;
-      tableBody.appendChild(row);
+        row.querySelector(".kyo-status").innerText = "查询中...";
+        row.querySelector(".sake-status").innerText = "查询中...";
+        row.querySelector(".untitled-status").innerText = "查询中...";
+        row.querySelector(".og-status").innerText = "查询中...";
+        row.querySelector(".sonova-status").innerText = "查询中...";
+
+        const [kyo, sake, untitled, og, sonova] = await Promise.all([
+          fetchKyoStatus(wallet),
+          fetchSakeStatus(wallet),
+          fetchUntitledStatus(wallet),
+          fetchOgStatus(wallet),
+          fetchSonovaStatus(wallet),
+        ]);
+
+        row.querySelector(".kyo-status").innerText = format(kyo);
+        row.querySelector(".sake-status").innerText = format(sake);
+        row.querySelector(".untitled-status").innerText = format(untitled);
+        row.querySelector(".og-status").innerText = format(og);
+        row.querySelector(".sonova-status").innerText = format(sonova);
+      }
+    }
+
+    function toggleAllCheckboxes(checked) {
+      document.querySelectorAll(".wallet-checkbox").forEach(cb => cb.checked = checked);
+    }
+
+    function exportSelectedToCSV() {
+      const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+      let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章,Sonova徽章\n";
+      selected.forEach((cb, idx) => {
+        const row = cb.closest("tr");
+        const cells = row.querySelectorAll("td");
+        const values = [idx + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
+        csv += values.join(",") + "\n";
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "selected_badges.csv";
+      a.click();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const cached = localStorage.getItem("wallets");
+      if (cached) {
+        document.getElementById("wallets").value = JSON.parse(cached).join("\n");
+      }
+
+      const cachedResults = localStorage.getItem("queryResults");
+      if (cachedResults) {
+        const results = JSON.parse(cachedResults);
+        const tableBody = document.querySelector("#resultTable tbody");
+        tableBody.innerHTML = "";
+        results.forEach((r, i) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input type="checkbox" class="wallet-checkbox" data-wallet="${r.wallet}" /></td>
+            <td>${i + 1}</td>
+            <td>${r.wallet}</td>
+            <td class="kyo-status">${format(r.kyo)}</td>
+            <td class="sake-status">${format(r.sake)}</td>
+            <td class="untitled-status">${format(r.untitled)}</td>
+            <td class="og-status">${format(r.og)}</td>
+            <td class="sonova-status">${format(r.sonova)}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+      }
     });
-  }
-});
-</script>
+  </script>
 </body>
 </html>
