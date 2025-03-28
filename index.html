@@ -67,7 +67,6 @@
   </style>
 </head>
 <body>
-  <!-- 导航栏 -->
   <nav style="background:#f0f0f0;padding:12px 20px;margin-bottom:20px;font-size:16px;">
     <a href="badge">🏠 徽章查询</a> |
     <a href="soneium">📊 活跃度查询</a>
@@ -92,6 +91,7 @@
           <th><a href="https://app.sakefinance.com/" target="_blank" class="badge-link">Sake徽章</a></th>
           <th><a href="https://app.untitledbank.co/" target="_blank" class="badge-link">Untitled徽章</a></th>
           <th>OG 徽章</th>
+          <th><a href="https://launch.sonova.one/launchpad/Sonova_ACS_edition" target="_blank" class="badge-link">Sonova徽章</a></th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -107,6 +107,20 @@
     const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
     const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
     const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
+
+    async function fetchSonovaStatus(wallet) {
+      try {
+        const short = wallet.slice(0, 6).toLowerCase() + wallet.slice(-4).toLowerCase();
+        if (!window.sonovaShorts || window.sonovaShorts.length === 0) {
+          const response = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
+          const text = await response.text();
+          window.sonovaShorts = text.split("\n").map(l => l.trim().toLowerCase()).filter(l => l);
+        }
+        return window.sonovaShorts.includes(short) ? "✅ 有" : "❌ 无";
+      } catch {
+        return "❌ 无";
+      }
+    }
 
     async function fetchKyoStatus(wallet) {
       try {
@@ -176,35 +190,35 @@
           <td class="sake-status">查询中...</td>
           <td class="untitled-status">查询中...</td>
           <td class="og-status">查询中...</td>
+          <td class="sonova-status">查询中...</td>
         `;
         tableBody.appendChild(row);
 
-        let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
+        let [kyoStatus, sakeStatus, untitledStatus, ogStatus, sonovaStatus] = await Promise.all([
           fetchKyoStatus(wallet),
           fetchSakeStatus(wallet),
           fetchUntitledStatus(wallet),
-          fetchOgStatus(wallet)
+          fetchOgStatus(wallet),
+          fetchSonovaStatus(wallet)
         ]);
 
         row.querySelector(".kyo-status").innerText = kyoStatus;
         row.querySelector(".sake-status").innerText = sakeStatus;
         row.querySelector(".untitled-status").innerText = untitledStatus;
         row.querySelector(".og-status").innerText = ogStatus;
+        row.querySelector(".sonova-status").innerText = sonovaStatus;
       }
 
-      // 保存查询结果到 localStorage
       const queryResults = Array.from(tableBody.rows).map(row => ({
         wallet: row.cells[2].innerText,
         kyo: row.querySelector(".kyo-status").innerText,
         sake: row.querySelector(".sake-status").innerText,
         untitled: row.querySelector(".untitled-status").innerText,
-        og: row.querySelector(".og-status").innerText
+        og: row.querySelector(".og-status").innerText,
+        sonova: row.querySelector(".sonova-status").innerText
       }));
       localStorage.setItem("queryResults", JSON.stringify(queryResults));
-
-      // 保存钱包地址到 localStorage
       localStorage.setItem("wallets", JSON.stringify(walletList));
-
       queryBtn.disabled = false;
     }
 
@@ -218,18 +232,21 @@
         row.querySelector(".sake-status").innerText = "查询中...";
         row.querySelector(".untitled-status").innerText = "查询中...";
         row.querySelector(".og-status").innerText = "查询中...";
+        row.querySelector(".sonova-status").innerText = "查询中...";
 
-        let [kyoStatus, sakeStatus, untitledStatus, ogStatus] = await Promise.all([
+        let [kyoStatus, sakeStatus, untitledStatus, ogStatus, sonovaStatus] = await Promise.all([
           fetchKyoStatus(wallet),
           fetchSakeStatus(wallet),
           fetchUntitledStatus(wallet),
-          fetchOgStatus(wallet)
+          fetchOgStatus(wallet),
+          fetchSonovaStatus(wallet)
         ]);
 
         row.querySelector(".kyo-status").innerText = kyoStatus;
         row.querySelector(".sake-status").innerText = sakeStatus;
         row.querySelector(".untitled-status").innerText = untitledStatus;
         row.querySelector(".og-status").innerText = ogStatus;
+        row.querySelector(".sonova-status").innerText = sonovaStatus;
       }
     }
 
@@ -239,11 +256,11 @@
 
     function exportSelectedToCSV() {
       const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
-      let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章\n";
+      let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章,Sonova徽章\n";
       selected.forEach((checkbox, index) => {
         const row = checkbox.closest("tr");
         const cells = row.querySelectorAll("td");
-        const rowData = [index + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText];
+        const rowData = [index + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
         csv += rowData.join(",") + "\n";
       });
       const blob = new Blob([csv], { type: "text/csv" });
@@ -257,19 +274,16 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-      // 加载缓存的地址
       const cachedWallets = localStorage.getItem("wallets");
       if (cachedWallets) {
         document.getElementById("wallets").value = JSON.parse(cachedWallets).join("\n");
       }
 
-      // 加载缓存的查询结果
       const cachedResults = localStorage.getItem("queryResults");
       if (cachedResults) {
         const results = JSON.parse(cachedResults);
         const tableBody = document.querySelector("#resultTable tbody");
         tableBody.innerHTML = "";
-        
         results.forEach((result, index) => {
           const row = document.createElement("tr");
           row.innerHTML = `
@@ -280,6 +294,7 @@
             <td class="sake-status">${result.sake}</td>
             <td class="untitled-status">${result.untitled}</td>
             <td class="og-status">${result.og}</td>
+            <td class="sonova-status">${result.sonova}</td>
           `;
           tableBody.appendChild(row);
         });
