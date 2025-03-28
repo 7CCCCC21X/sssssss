@@ -1,69 +1,23 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>索尼 徽章批量查询</title>
-  <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>索尼徽章批量查询</title>
+  <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 20px auto;
-      text-align: center;
-    }
-    textarea {
-      width: 100%;
-      height: 150px;
-      font-size: 16px;
-      padding: 10px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 15px;
-      font-size: 16px;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-    }
-    button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
-    button:hover:enabled {
-      background-color: #45a049;
-    }
-    .result {
-      margin-top: 20px;
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #007bff;
-      color: white;
-    }
-    .badge-link {
-      text-decoration: none;
-      color: white;
-      font-weight: bold;
-    }
-    .badge-link:hover {
-      text-decoration: underline;
-    }
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; text-align: center; }
+    textarea { width: 100%; height: 150px; font-size: 16px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    button { margin-top: 10px; padding: 10px 15px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+    button:disabled { background-color: #aaa; cursor: not-allowed; }
+    button:hover:enabled { background-color: #45a049; }
+    .result { margin-top: 20px; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #007bff; color: white; }
+    .badge-link { text-decoration: none; color: white; font-weight: bold; }
+    .badge-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -72,19 +26,18 @@
     <a href="soneium">📊 活跃度查询</a>
   </nav>
 
-  <h2>索尼 徽章批量查询</h2>
+  <h2>索尼任务批量查询</h2>
   <p>输入钱包地址（每行一个）：</p>
-  <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea>
-  <br>
+  <textarea id="wallets" placeholder="输入钱包地址，每行一个"></textarea><br/>
   <button id="queryAllBtn" onclick="queryAndLoadWallets()">查询</button>
   <button onclick="querySelectedBadges()">查询勾选地址</button>
-  <button onclick="exportSelectedToCSV()">导出 CSV</button>
+  <button onclick="exportSelectedToCSV()">导出CSV</button>
 
   <div id="output" class="result">
     <table id="resultTable">
       <thead>
         <tr>
-          <th><input type="checkbox" id="selectAllCheckbox" onclick="toggleAllCheckboxes(this.checked)"></th>
+          <th><input type="checkbox" id="selectAllCheckbox" onclick="toggleAllCheckboxes(this.checked)" /></th>
           <th>编号</th>
           <th>地址</th>
           <th><a href="https://app.kyo.finance/" target="_blank" class="badge-link">KYO徽章</a></th>
@@ -100,206 +53,188 @@
 
   <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 
-  <script>
-    const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
-    const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
-    const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
-    const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
-    const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
-    const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
+<script>
+const kyoApiUrlPrimary = "https://api.cluster.kyo.finance/quest/1868/0/verify?address=";
+const kyoApiUrlBackup = "https://api.cluster.kyo.finance/quest/1868/1/verify?address=";
+const sakeApiUrl = "https://stats.sakefinance.com/ecosystembadge?user=";
+const ogApiBaseUrl = "https://soneium.blockscout.com/api/v2/addresses/";
+const ogNftContract = "0x2A21B17E366836e5FFB19bd47edB03b4b551C89d";
+const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app/api/proxy";
 
-    async function fetchSonovaStatus(wallet) {
-      try {
-        const short = wallet.slice(0, 6).toLowerCase() + wallet.slice(-4).toLowerCase();
-        if (!window.sonovaShorts || window.sonovaShorts.length === 0) {
-          const response = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
-          const text = await response.text();
-          window.sonovaShorts = text.split("\n").map(l => l.trim().toLowerCase()).filter(l => l);
-        }
-        return window.sonovaShorts.includes(short) ? "✅ 有" : "❌ 无";
-      } catch {
-        return "❌ 无";
-      }
-    }
+let sonovaShortSet = new Set();
 
-    async function fetchKyoStatus(wallet) {
-      try {
-        let response = await fetch(kyoApiUrlPrimary + wallet);
-        let data = await response.json();
-        if (data.eligible) return "✅ 有";
-      } catch {}
-      try {
-        let response = await fetch(kyoApiUrlBackup + wallet);
-        let data = await response.json();
-        return data.eligible ? "✅ 有" : "❌ 无";
-      } catch {
-        return "❌ 无";
-      }
-    }
-
-    async function fetchSakeStatus(wallet) {
-      try {
-        let response = await fetch(sakeApiUrl + wallet);
-        let data = await response.json();
-        return data.met_all_requirements ? "✅ 有" : "❌ 无";
-      } catch {
-        return "❌ 无";
-      }
-    }
-
-    async function fetchUntitledStatus(wallet) {
-      try {
-        wallet = ethers.utils.getAddress(wallet);
-        const timestamp = Date.now();
-        const response = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${timestamp}`);
-        const data = await response.json();
-        const txCount = data.transactions?.length ?? 0;
-        return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
-      } catch {
-        return "❌ 无";
-      }
-    }
-
-    async function fetchOgStatus(wallet) {
-      try {
-        const response = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
-        const data = await response.json();
-        const items = data.items || [];
-        return items.some(item => item.token.address.toLowerCase() === ogNftContract.toLowerCase()) ? "✅ 有" : "❌ 无";
-      } catch {
-        return "❌ 无";
-      }
-    }
-
-    async function queryAndLoadWallets() {
-      const queryBtn = document.getElementById("queryAllBtn");
-      queryBtn.disabled = true;
-
-      const walletList = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
-      const tableBody = document.querySelector("#resultTable tbody");
-      tableBody.innerHTML = "";
-
-      for (let i = 0; i < walletList.length; i++) {
-        const wallet = walletList[i];
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><input type="checkbox" class="wallet-checkbox" data-wallet="${wallet}" /></td>
-          <td>${i + 1}</td>
-          <td>${wallet}</td>
-          <td class="kyo-status">查询中...</td>
-          <td class="sake-status">查询中...</td>
-          <td class="untitled-status">查询中...</td>
-          <td class="og-status">查询中...</td>
-          <td class="sonova-status">查询中...</td>
-        `;
-        tableBody.appendChild(row);
-
-        let [kyoStatus, sakeStatus, untitledStatus, ogStatus, sonovaStatus] = await Promise.all([
-          fetchKyoStatus(wallet),
-          fetchSakeStatus(wallet),
-          fetchUntitledStatus(wallet),
-          fetchOgStatus(wallet),
-          fetchSonovaStatus(wallet)
-        ]);
-
-        row.querySelector(".kyo-status").innerText = kyoStatus;
-        row.querySelector(".sake-status").innerText = sakeStatus;
-        row.querySelector(".untitled-status").innerText = untitledStatus;
-        row.querySelector(".og-status").innerText = ogStatus;
-        row.querySelector(".sonova-status").innerText = sonovaStatus;
-      }
-
-      const queryResults = Array.from(tableBody.rows).map(row => ({
-        wallet: row.cells[2].innerText,
-        kyo: row.querySelector(".kyo-status").innerText,
-        sake: row.querySelector(".sake-status").innerText,
-        untitled: row.querySelector(".untitled-status").innerText,
-        og: row.querySelector(".og-status").innerText,
-        sonova: row.querySelector(".sonova-status").innerText
-      }));
-      localStorage.setItem("queryResults", JSON.stringify(queryResults));
-      localStorage.setItem("wallets", JSON.stringify(walletList));
-      queryBtn.disabled = false;
-    }
-
-    async function querySelectedBadges() {
-      const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
-      for (let checkbox of selected) {
-        const wallet = checkbox.dataset.wallet;
-        const row = checkbox.closest("tr");
-
-        row.querySelector(".kyo-status").innerText = "查询中...";
-        row.querySelector(".sake-status").innerText = "查询中...";
-        row.querySelector(".untitled-status").innerText = "查询中...";
-        row.querySelector(".og-status").innerText = "查询中...";
-        row.querySelector(".sonova-status").innerText = "查询中...";
-
-        let [kyoStatus, sakeStatus, untitledStatus, ogStatus, sonovaStatus] = await Promise.all([
-          fetchKyoStatus(wallet),
-          fetchSakeStatus(wallet),
-          fetchUntitledStatus(wallet),
-          fetchOgStatus(wallet),
-          fetchSonovaStatus(wallet)
-        ]);
-
-        row.querySelector(".kyo-status").innerText = kyoStatus;
-        row.querySelector(".sake-status").innerText = sakeStatus;
-        row.querySelector(".untitled-status").innerText = untitledStatus;
-        row.querySelector(".og-status").innerText = ogStatus;
-        row.querySelector(".sonova-status").innerText = sonovaStatus;
-      }
-    }
-
-    function toggleAllCheckboxes(checked) {
-      document.querySelectorAll(".wallet-checkbox").forEach(cb => cb.checked = checked);
-    }
-
-    function exportSelectedToCSV() {
-      const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
-      let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章,Sonova徽章\n";
-      selected.forEach((checkbox, index) => {
-        const row = checkbox.closest("tr");
-        const cells = row.querySelectorAll("td");
-        const rowData = [index + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
-        csv += rowData.join(",") + "\n";
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "selected_badges.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const cachedWallets = localStorage.getItem("wallets");
-      if (cachedWallets) {
-        document.getElementById("wallets").value = JSON.parse(cachedWallets).join("\n");
-      }
-
-      const cachedResults = localStorage.getItem("queryResults");
-      if (cachedResults) {
-        const results = JSON.parse(cachedResults);
-        const tableBody = document.querySelector("#resultTable tbody");
-        tableBody.innerHTML = "";
-        results.forEach((result, index) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><input type="checkbox" class="wallet-checkbox" data-wallet="${result.wallet}" checked /></td>
-            <td>${index + 1}</td>
-            <td>${result.wallet}</td>
-            <td class="kyo-status">${result.kyo}</td>
-            <td class="sake-status">${result.sake}</td>
-            <td class="untitled-status">${result.untitled}</td>
-            <td class="og-status">${result.og}</td>
-            <td class="sonova-status">${result.sonova}</td>
-          `;
-          tableBody.appendChild(row);
-        });
+async function loadSonovaShorts() {
+  try {
+    const res = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
+    const text = await res.text();
+    const lines = text.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
+    lines.forEach(line => {
+      if (line.startsWith("0x") && line.includes("...")) {
+        const [pre, post] = line.split("...");
+        const short = pre.slice(0, 6) + post.slice(-4);
+        sonovaShortSet.add(short);
       }
     });
-  </script>
+  } catch (e) {
+    console.error("加载 Sonova TXT 文件失败", e);
+  }
+}
+
+function getShortAddress(addr) {
+  return addr.slice(0, 6).toLowerCase() + addr.slice(-4).toLowerCase();
+}
+
+async function fetchSonovaStatus(wallet) {
+  const short = getShortAddress(wallet);
+  return sonovaShortSet.has(short) ? "✅ 有" : "❌ 无";
+}
+
+async function fetchKyoStatus(wallet) {
+  try {
+    let res = await fetch(kyoApiUrlPrimary + wallet);
+    let data = await res.json();
+    if (data.eligible) return "✅ 有";
+  } catch {}
+  try {
+    let res = await fetch(kyoApiUrlBackup + wallet);
+    let data = await res.json();
+    return data.eligible ? "✅ 有" : "❌ 无";
+  } catch {
+    return "❌ 无";
+  }
+}
+
+async function fetchSakeStatus(wallet) {
+  try {
+    const res = await fetch(sakeApiUrl + wallet);
+    const data = await res.json();
+    return data.met_all_requirements ? "✅ 有" : "❌ 无";
+  } catch {
+    return "❌ 无";
+  }
+}
+
+async function fetchUntitledStatus(wallet) {
+  try {
+    wallet = ethers.utils.getAddress(wallet);
+    const t = Date.now();
+    const res = await fetch(`${vercelProxyUrl}?address=${wallet}&start=4085424&end=5165422&t=${t}`);
+    const data = await res.json();
+    const txCount = data.transactions?.length ?? 0;
+    return txCount >= 10 ? "✅ 有" : `❌ 无 (${txCount})`;
+  } catch {
+    return "❌ 无";
+  }
+}
+
+async function fetchOgStatus(wallet) {
+  try {
+    const res = await fetch(`${ogApiBaseUrl}${wallet}/tokens?type=ERC-1155`);
+    const data = await res.json();
+    const items = data.items || [];
+    return items.some(i => i.token.address.toLowerCase() === ogNftContract.toLowerCase()) ? "✅ 有" : "❌ 无";
+  } catch {
+    return "❌ 无";
+  }
+}
+
+async function queryAndLoadWallets() {
+  await loadSonovaShorts(); // 确保先加载Sonova文件
+
+  const queryBtn = document.getElementById("queryAllBtn");
+  queryBtn.disabled = true;
+
+  const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
+  const tableBody = document.querySelector("#resultTable tbody");
+  tableBody.innerHTML = "";
+
+  const results = [];
+
+  for (let i = 0; i < wallets.length; i++) {
+    const wallet = wallets[i];
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><input type="checkbox" class="wallet-checkbox" data-wallet="${wallet}" /></td>
+      <td>${i + 1}</td>
+      <td>${wallet}</td>
+      <td class="kyo-status">查询中...</td>
+      <td class="sake-status">查询中...</td>
+      <td class="untitled-status">查询中...</td>
+      <td class="og-status">查询中...</td>
+      <td class="sonova-status">查询中...</td>
+    `;
+    tableBody.appendChild(row);
+
+    const [kyo, sake, untitled, og, sonova] = await Promise.all([
+      fetchKyoStatus(wallet),
+      fetchSakeStatus(wallet),
+      fetchUntitledStatus(wallet),
+      fetchOgStatus(wallet),
+      fetchSonovaStatus(wallet),
+    ]);
+
+    row.querySelector(".kyo-status").innerText = kyo;
+    row.querySelector(".sake-status").innerText = sake;
+    row.querySelector(".untitled-status").innerText = untitled;
+    row.querySelector(".og-status").innerText = og;
+    row.querySelector(".sonova-status").innerText = sonova;
+
+    results.push({ wallet, kyo, sake, untitled, og, sonova });
+  }
+
+  localStorage.setItem("wallets", JSON.stringify(wallets));
+  localStorage.setItem("queryResults", JSON.stringify(results));
+  queryBtn.disabled = false;
+}
+
+function toggleAllCheckboxes(checked) {
+  document.querySelectorAll(".wallet-checkbox").forEach(cb => cb.checked = checked);
+}
+
+function exportSelectedToCSV() {
+  const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"));
+  let csv = "编号,地址,KYO徽章,Sake徽章,Untitled徽章,OG徽章,Sonova徽章\n";
+  selected.forEach((cb, idx) => {
+    const row = cb.closest("tr");
+    const cells = row.querySelectorAll("td");
+    const values = [idx + 1, cells[2].innerText, cells[3].innerText, cells[4].innerText, cells[5].innerText, cells[6].innerText, cells[7].innerText];
+    csv += values.join(",") + "\n";
+  });
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "selected_badges.csv";
+  a.click();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const cached = localStorage.getItem("wallets");
+  if (cached) {
+    document.getElementById("wallets").value = JSON.parse(cached).join("\n");
+  }
+
+  const cachedResults = localStorage.getItem("queryResults");
+  if (cachedResults) {
+    const results = JSON.parse(cachedResults);
+    const tableBody = document.querySelector("#resultTable tbody");
+    tableBody.innerHTML = "";
+    results.forEach((r, i) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><input type="checkbox" class="wallet-checkbox" data-wallet="${r.wallet}" checked /></td>
+        <td>${i + 1}</td>
+        <td>${r.wallet}</td>
+        <td class="kyo-status">${r.kyo}</td>
+        <td class="sake-status">${r.sake}</td>
+        <td class="untitled-status">${r.untitled}</td>
+        <td class="og-status">${r.og}</td>
+        <td class="sonova-status">${r.sonova}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+});
+</script>
 </body>
 </html>
