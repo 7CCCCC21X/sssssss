@@ -64,20 +64,16 @@ const vercelProxyUrl = "https://sssssss-rh885pjef-7ccccc21xs-projects.vercel.app
 let sonovaShortSet = new Set();
 
 async function loadSonovaShorts() {
-  try {
-    const res = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
-    const text = await res.text();
-    const lines = text.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
-    lines.forEach(line => {
-      if (line.startsWith("0x") && line.includes("...")) {
-        const [pre, post] = line.split("...");
-        const short = pre.slice(0, 6) + post.slice(-4);
-        sonovaShortSet.add(short);
-      }
-    });
-  } catch (e) {
-    console.error("加载 Sonova TXT 文件失败", e);
-  }
+  const res = await fetch("https://raw.githubusercontent.com/7CCCCC21X/sssssss/main/sonova.txt");
+  const text = await res.text();
+  const lines = text.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
+  lines.forEach(line => {
+    if (line.startsWith("0x") && line.includes("...")) {
+      const [pre, post] = line.split("...");
+      const short = pre.slice(0, 6) + post.slice(-4);
+      sonovaShortSet.add(short);
+    }
+  });
 }
 
 function getShortAddress(addr) {
@@ -138,18 +134,10 @@ async function fetchOgStatus(wallet) {
   }
 }
 
-async function queryAndLoadWallets() {
-  await loadSonovaShorts(); // 确保先加载Sonova文件
-
-  const queryBtn = document.getElementById("queryAllBtn");
-  queryBtn.disabled = true;
-
-  const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
+async function queryWallets(wallets) {
   const tableBody = document.querySelector("#resultTable tbody");
   tableBody.innerHTML = "";
-
   const results = [];
-
   for (let i = 0; i < wallets.length; i++) {
     const wallet = wallets[i];
     const row = document.createElement("tr");
@@ -170,7 +158,7 @@ async function queryAndLoadWallets() {
       fetchSakeStatus(wallet),
       fetchUntitledStatus(wallet),
       fetchOgStatus(wallet),
-      fetchSonovaStatus(wallet),
+      fetchSonovaStatus(wallet)
     ]);
 
     row.querySelector(".kyo-status").innerText = kyo;
@@ -181,10 +169,21 @@ async function queryAndLoadWallets() {
 
     results.push({ wallet, kyo, sake, untitled, og, sonova });
   }
-
   localStorage.setItem("wallets", JSON.stringify(wallets));
   localStorage.setItem("queryResults", JSON.stringify(results));
-  queryBtn.disabled = false;
+}
+
+async function queryAndLoadWallets() {
+  await loadSonovaShorts();
+  const wallets = document.getElementById("wallets").value.trim().split("\n").map(w => w.trim()).filter(Boolean);
+  queryWallets(wallets);
+}
+
+async function querySelectedBadges() {
+  await loadSonovaShorts();
+  const selected = Array.from(document.querySelectorAll(".wallet-checkbox:checked"))
+    .map(cb => cb.dataset.wallet);
+  queryWallets(selected);
 }
 
 function toggleAllCheckboxes(checked) {
