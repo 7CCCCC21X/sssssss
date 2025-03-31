@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Soneium 批量活跃度查询</title>
-  <!-- 设置网站图标 -->
   <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon" />
-
   <style>
     body {
       font-family: 'Helvetica Neue', sans-serif;
@@ -107,7 +105,6 @@
       background-color: #f9f9f9;
     }
 
-    /* 居中作者推特 */
     .twitter {
       text-align: center;
       margin-top: 20px;
@@ -115,7 +112,6 @@
   </style>
 </head>
 <body>
-  <!-- 导航栏插入处 -->
   <nav style="background:#f0f0f0;padding:12px 20px;margin-bottom:20px;font-size:16px;">
     <a href="badge">🏠 徽章查询</a> |
     <a href="soneium">📊 活跃度查询</a>
@@ -158,22 +154,24 @@
     let allAddrs = [];
     const rowMap = {};
 
-    // 格式化时间显示
     function formatTimeAgo(dateStr) {
       if (!dateStr) return '-';
       const date = new Date(dateStr);
       const now = new Date();
-      const diff = Math.floor((now - date) / 86400 / 1000);
-      if (diff < 1) return '1 天前';
+      const sameDay = date.getFullYear() === now.getFullYear()
+        && date.getMonth() === now.getMonth()
+        && date.getDate() === now.getDate();
+      if (sameDay) return '今天';
+
+      const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
       if (diff < 30) return `${diff} 天前`;
       return `${Math.floor(diff / 30)} 个月前`;
     }
 
     function saveToCache(wallets, results) {
-      // 保存钱包地址与查询结果
       const data = wallets.map((addr, index) => ({
         address: addr,
-        checked: document.querySelector(`input[data-address="${addr}"]`).checked, // 保存复选框状态
+        checked: document.querySelector(`input[data-address="${addr}"]`).checked,
         ...results[index]
       }));
       localStorage.setItem("soneium_cache", JSON.stringify(data));
@@ -214,7 +212,7 @@
 
     async function fetchStats(address) {
       try {
-        const [metaRes, counterRes] = await Promise.all([ 
+        const [metaRes, counterRes] = await Promise.all([
           fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}`).then(r => r.json()),
           fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}/counters`).then(r => r.json())
         ]);
@@ -247,7 +245,6 @@
           const items = data.items || [];
           const userTxs = items.filter(tx => tx.from?.hash?.toLowerCase() === address.toLowerCase());
           allTxs.push(...userTxs);
-
           if (!data.next_page_params) break;
 
           const p = data.next_page_params;
@@ -257,7 +254,7 @@
         const days = new Set(), weeks = new Set(), months = new Set(), contracts = new Set();
         for (const tx of allTxs) {
           const date = tx.timestamp;
-          if (!date || !tx.to || !tx.to.hash) continue;
+          if (!date || !tx.to?.hash) continue;
           days.add(formatTimeAgo(date));
           weeks.add(formatTimeAgo(date));
           months.add(formatTimeAgo(date));
@@ -275,7 +272,10 @@
           error: null
         };
       } catch (e) {
-        return { txCount: 0, dayActivity: 0, weekActivity: 0, monthActivity: 0, contractActivity: 0, lastTxTime: null, error: "交易查询失败" };
+        return {
+          txCount: 0, dayActivity: 0, weekActivity: 0, monthActivity: 0,
+          contractActivity: 0, lastTxTime: null, error: "交易查询失败"
+        };
       }
     }
 
@@ -298,7 +298,7 @@
             const [txRes, statRes] = await Promise.all([fetchTxData(addr), fetchStats(addr)]);
             const row = rowMap[addr.toLowerCase()];
             const hasError = txRes.error || statRes.error;
-            const timeText = txRes.lastTxTime ? formatTimeAgo(txRes.lastTxTime) : '-'; // 修改为显示“几天前”或“ - ”
+            const timeText = txRes.lastTxTime ? formatTimeAgo(txRes.lastTxTime) : '-';
             const timeColorClass = txRes.lastTxTime && ((new Date() - new Date(txRes.lastTxTime)) / 86400000 > 7) ? "error" : "";
             row.innerHTML = `
               <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked /></td>
@@ -325,7 +325,6 @@
       const resultList = selectedAddrs.map(addr => resultsMap[addr.toLowerCase()]);
       saveToCache(allAddrs, resultList);
       showSummary(resultList);
-
       queryBtn.disabled = false;
       queryBtn.textContent = "开始查询";
     }
@@ -367,6 +366,7 @@
             <td>${item.lastTxTime ? formatTimeAgo(item.lastTxTime) : '-'}</td>
             <td>${item.ethBalance}</td>
             <td>${item.feeUSD}</td>
+            <td>✅</td>
           `;
           tbody.appendChild(row);
           rowMap[item.address.toLowerCase()] = row;
@@ -377,7 +377,6 @@
     });
   </script>
 
-  <!-- 作者推特（居中显示） -->
   <p class="twitter">作者推特：<a href="https://x.com/0xXIAOc" target="_blank">@0xXIAOc</a></p>
 </body>
 </html>
