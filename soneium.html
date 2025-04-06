@@ -153,6 +153,11 @@
   <script>
     let allAddrs = [];
     const rowMap = {};
+    const now = new Date();
+
+    // 获取当前周的起始日期（周一）
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 1)); // 将日期调整到本周周一
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // 获取当前月的起始日期
 
     function formatTimeAgo(dateStr) {
       if (!dateStr) return '-';
@@ -255,10 +260,16 @@
         for (const tx of allTxs) {
           const date = tx.timestamp;
           if (!date || !tx.to?.hash) continue;
-          days.add(formatTimeAgo(date));
-          weeks.add(formatTimeAgo(date));
-          months.add(formatTimeAgo(date));
-          contracts.add(tx.to.hash);
+          const txDate = new Date(date * 1000);  // 将UNIX时间戳转换为Date对象
+          if (txDate.toDateString() === new Date().toDateString()) {
+            days.add(txDate.toDateString());  // 如果是今天，加入日活
+          }
+          if (txDate >= startOfWeek && txDate < new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+            weeks.add(txDate.toDateString()); // 如果是在本周，加入周活
+          }
+          if (txDate.getMonth() === startOfMonth.getMonth() && txDate.getFullYear() === startOfMonth.getFullYear()) {
+            months.add(txDate.toDateString()); // 如果是在本月，加入月活
+          }
         }
 
         lastTime = allTxs.length > 0 ? allTxs[0].timestamp : null;
