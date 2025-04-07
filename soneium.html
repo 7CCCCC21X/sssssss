@@ -2,7 +2,6 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Soneium 批量活跃度查询</title>
   <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon" />
   <style>
@@ -153,30 +152,61 @@
   <script>
     let allAddrs = [];
     const rowMap = {};
-    const now = new Date();
 
-    // 获取当前周的起始日期（周一）
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 1)); // 将日期调整到本周周一
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // 获取当前月的起始日期
-
+    // 修改后的时间格式化函数:
+    // - 如果是同一天 => '今天'
+    // - 否则 => 'X 天前'（含1天, 30天, 100天等）
     function formatTimeAgo(dateStr) {
       if (!dateStr) return '-';
       const date = new Date(dateStr);
       const now = new Date();
-      const sameDay = date.getFullYear() === now.getFullYear()
-        && date.getMonth() === now.getMonth()
-        && date.getDate() === now.getDate();
-      if (sameDay) return '今天';
+
+      const sameDay =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate();
+
+      if (sameDay) {
+        return '今天';
+      }
 
       const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-      if (diff < 30) return `${diff} 天前`;
-      return `${Math.floor(diff / 30)} 个月前`;
+      return `${diff} 天前`;
+    }
+
+    // 辅助函数：返回 YYYY-MM-DD，用于统计独立天
+    function getDayString(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // 辅助函数：返回 ISO 年-周
+    function getWeekString(d) {
+      const date = new Date(+d);
+      date.setHours(0, 0, 0, 0);
+      const dayNum = (date.getDay() + 6) % 7; 
+      date.setDate(date.getDate() - dayNum + 3);
+
+      const firstThursday = new Date(date.getFullYear(), 0, 4);
+      const diff = date - firstThursday;
+      const oneWeek = 7 * 24 * 3600 * 1000;
+      const weekNum = 1 + Math.floor(diff / oneWeek);
+      return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    }
+
+    // 辅助函数：返回 YYYY-MM，用于统计独立月
+    function getMonthString(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      return `${year}-${month}`;
     }
 
     function saveToCache(wallets, results) {
       const data = wallets.map((addr, index) => ({
         address: addr,
-        checked: document.querySelector(`input[data-address="${addr}"]`).checked,
+        checked: document.querySelector(`input[data-address="${addr}"]`)?.checked || false,
         ...results[index]
       }));
       localStorage.setItem("soneium_cache", JSON.stringify(data));
@@ -242,37 +272,42 @@
       const pageSize = 50;
       let pageParams = "";
       let lastTime = null;
+
       try {
         while (true) {
           const url = `https://soneium.blockscout.com/api/v2/addresses/${address}/transactions?items_count=${pageSize}${pageParams}`;
           const res = await fetch(url);
           const data = await res.json();
           const items = data.items || [];
+
           const userTxs = items.filter(tx => tx.from?.hash?.toLowerCase() === address.toLowerCase());
           allTxs.push(...userTxs);
+
           if (!data.next_page_params) break;
 
           const p = data.next_page_params;
           pageParams = `&block_number=${p.block_number}&fee=${p.fee}&hash=${p.hash}&index=${p.index}&inserted_at=${p.inserted_at}&value=${p.value}`;
         }
 
-        const days = new Set(), weeks = new Set(), months = new Set(), contracts = new Set();
+        const days = new Set();
+        const weeks = new Set();
+        const months = new Set();
+        const contracts = new Set();
+
         for (const tx of allTxs) {
-          const date = tx.timestamp;
-          if (!date || !tx.to?.hash) continue;
-          const txDate = new Date(date * 1000);  // 将UNIX时间戳转换为Date对象
-          if (txDate.toDateString() === new Date().toDateString()) {
-            days.add(txDate.toDateString());  // 如果是今天，加入日活
-          }
-          if (txDate >= startOfWeek && txDate < new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000)) {
-            weeks.add(txDate.toDateString()); // 如果是在本周，加入周活
-          }
-          if (txDate.getMonth() === startOfMonth.getMonth() && txDate.getFullYear() === startOfMonth.getFullYear()) {
-            months.add(txDate.toDateString()); // 如果是在本月，加入月活
-          }
+          if (!tx.timestamp || !tx.to?.hash) continue;
+          const txDate = new Date(tx.timestamp);
+
+          days.add(getDayString(txDate));
+          weeks.add(getWeekString(txDate));
+          months.add(getMonthString(txDate));
+          contracts.add(tx.to.hash);
         }
 
-        lastTime = allTxs.length > 0 ? allTxs[0].timestamp : null;
+        if (allTxs.length > 0) {
+          lastTime = allTxs[0].timestamp;
+        }
+
         return {
           txCount: allTxs.length,
           dayActivity: days.size,
@@ -284,8 +319,13 @@
         };
       } catch (e) {
         return {
-          txCount: 0, dayActivity: 0, weekActivity: 0, monthActivity: 0,
-          contractActivity: 0, lastTxTime: null, error: "交易查询失败"
+          txCount: 0,
+          dayActivity: 0,
+          weekActivity: 0,
+          monthActivity: 0,
+          contractActivity: 0,
+          lastTxTime: null,
+          error: "交易查询失败"
         };
       }
     }
@@ -299,7 +339,8 @@
       queryBtn.textContent = "查询中...";
 
       const resultsMap = {};
-      let index = 0, maxConcurrency = 5;
+      let index = 0;
+      const maxConcurrency = 5;
 
       async function runBatch() {
         const batch = [];
@@ -309,8 +350,12 @@
             const [txRes, statRes] = await Promise.all([fetchTxData(addr), fetchStats(addr)]);
             const row = rowMap[addr.toLowerCase()];
             const hasError = txRes.error || statRes.error;
+
             const timeText = txRes.lastTxTime ? formatTimeAgo(txRes.lastTxTime) : '-';
-            const timeColorClass = txRes.lastTxTime && ((new Date() - new Date(txRes.lastTxTime)) / 86400000 > 7) ? "error" : "";
+            const timeColorClass =
+              txRes.lastTxTime && ((new Date() - new Date(txRes.lastTxTime)) / 86400000 > 7)
+                ? "error" : "";
+
             row.innerHTML = `
               <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked /></td>
               <td>${allAddrs.indexOf(addr) + 1}</td>
@@ -325,11 +370,14 @@
               <td>${statRes.feeUSD}</td>
               <td class="${hasError ? 'error' : ''}">${hasError ? (txRes.error || statRes.error) : "✅"}</td>
             `;
+
             resultsMap[addr.toLowerCase()] = { address: addr, ...txRes, ...statRes };
           })());
         }
         await Promise.all(batch);
-        if (index < selectedAddrs.length) await runBatch();
+        if (index < selectedAddrs.length) {
+          await runBatch();
+        }
       }
 
       await runBatch();
@@ -365,6 +413,7 @@
         tbody.innerHTML = "";
         cached.forEach((item, index) => {
           const row = document.createElement("tr");
+          const timeText = item.lastTxTime ? formatTimeAgo(item.lastTxTime) : '-';
           row.innerHTML = `
             <td><input type="checkbox" class="row-checkbox" data-address="${item.address}" ${item.checked ? 'checked' : ''} /></td>
             <td>${index + 1}</td>
@@ -374,7 +423,7 @@
             <td>${item.weekActivity}</td>
             <td>${item.monthActivity}</td>
             <td>${item.contractActivity}</td>
-            <td>${item.lastTxTime ? formatTimeAgo(item.lastTxTime) : '-'}</td>
+            <td>${timeText}</td>
             <td>${item.ethBalance}</td>
             <td>${item.feeUSD}</td>
             <td>✅</td>
