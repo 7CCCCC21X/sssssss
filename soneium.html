@@ -5,45 +5,28 @@
   <title>Soneium 批量活跃度查询</title>
   <link rel="icon" href="zjsm0-2d1rb-001.ico" type="image/x-icon" />
   <style>
-    body {
-      font-family: 'Helvetica Neue', sans-serif;
-      background: #f9f9f9;
-      margin: 0;
-      padding: 0;
-      color: #333;
-    }
-    .container { width: 100%; padding: 0 40px; box-sizing: border-box; }
-    .top-bar { position: sticky; top: 0; background: #f9f9f9; padding: 20px 0 10px; z-index: 10; }
-
-    textarea {
-      width: 100%; height: 100px; font-size: 14px; padding: 10px;
-      border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 10px;
-    }
-    button {
-      background: #007BFF; color: #fff; border: none; border-radius: 6px;
-      padding: 8px 18px; font-weight: bold; margin-right: 10px;
-      cursor: pointer; transition: background .3s;
-    }
-    button:disabled { background: #999; cursor: not-allowed; }
-    button:hover:not(:disabled) { background: #0056b3; }
-
-    .table-wrapper {
-      overflow-x: auto; margin-top: 20px; max-height: 70vh; overflow-y: auto;
-      border: 1px solid #eee; border-radius: 8px; background: #fff;
-    }
-    table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-    th, td {
-      border: 1px solid #e0e0e0; padding: 8px 6px; text-align: center;
-      font-size: 13px; white-space: normal; word-break: break-word;
-    }
-    thead th { position: sticky; top: 0; background: #f0f2f5; z-index: 5; }
-    tr:hover { background: #f1faff; }
-
-    /* 红色高亮：不在当月活跃 */
-    .error { color: #e11d48; font-weight: 600; }
-
-    tfoot td { font-weight: bold; background: #f9f9f9; }
-    .twitter { text-align: center; margin-top: 20px; }
+    body{font-family:'Helvetica Neue',sans-serif;background:#f9f9f9;margin:0;padding:0;color:#333;}
+    .container{width:100%;padding:0 40px;box-sizing:border-box;}
+    .top-bar{position:sticky;top:0;background:#f9f9f9;padding:20px 0 10px;z-index:10;}
+    textarea{width:100%;height:100px;font-size:14px;padding:10px;border-radius:8px;border:1px solid #ccc;
+             box-sizing:border-box;margin-bottom:10px;}
+    button{background:#007BFF;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-weight:bold;
+           margin-right:10px;cursor:pointer;transition:background .3s;}
+    button:disabled{background:#999;cursor:not-allowed;}
+    button:hover:not(:disabled){background:#0056b3;}
+    #progressWrapper{display:none;margin-top:8px;}
+    progress{width:100%;height:14px;border-radius:6px;overflow:hidden;}
+    #progressText{margin-top:4px;font-size:14px;text-align:right;color:#555;}
+    .table-wrapper{overflow-x:auto;margin-top:20px;max-height:70vh;overflow-y:auto;border:1px solid #eee;
+                   border-radius:8px;background:#fff;}
+    table{width:100%;border-collapse:collapse;min-width:1000px;}
+    th,td{border:1px solid #e0e0e0;padding:8px 6px;text-align:center;font-size:13px;white-space:normal;word-break:break-word;}
+    thead th{position:sticky;top:0;background:#f0f2f5;z-index:5;}
+    tr:hover{background:#f1faff;}
+    .error{color:#e11d48;font-weight:600;}
+    tfoot td{font-weight:bold;background:#f9f9f9;}
+    #lastQueryInfo{font-size:14px;color:#555;margin-top:6px;}
+    .twitter{text-align:center;margin-top:20px;}
   </style>
 </head>
 <body>
@@ -59,6 +42,12 @@
       <button id="importBtn" onclick="importAddresses()">导入地址</button>
       <button id="queryAllBtn" onclick="startQuery(false)">开始查询</button>
       <button id="querySelectedBtn" onclick="startQuery(true)">查询选定地址</button>
+
+      <div id="progressWrapper">
+        <progress id="progressBar" value="0" max="0"></progress>
+        <div id="progressText">0 / 0</div>
+      </div>
+      <div id="lastQueryInfo"></div>
     </div>
 
     <div class="table-wrapper">
@@ -86,196 +75,144 @@
   </div>
 
   <script>
-    let allAddrs = [];
-    const rowMap = {};
+    let allAddrs=[];
+    const rowMap={};
 
-    // 判断给定 ISO 字符串是否属于当月
-    function isActiveThisMonth(isoStr) {
-      if (!isoStr) return false;
-      const d = new Date(isoStr);
-      const now = new Date();
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    }
+    /* ---------- 工具函数 ---------- */
+    const dayMs=86_400_000;
+    function isActiveThisMonth(iso){if(!iso)return false;const d=new Date(iso),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();}
+    function formatTimeAgo(dateStr){if(!dateStr)return '-';const d=new Date(dateStr),n=new Date(),diff=n-d;if(diff<dayMs)return'今天';return`${Math.floor(diff/dayMs)} 天前`;}
+    const dayStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const monStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    function weekStr(d){const dt=new Date(+d);dt.setHours(0,0,0,0);const wd=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-wd+3);const firstThu=new Date(dt.getFullYear(),0,4);const wn=1+Math.floor((dt-firstThu)/(7*dayMs));return`${dt.getFullYear()}-W${String(wn).padStart(2,'0')}`;}
 
-    // - 同一天 => '今天'
-    // - 否则 => 'X 天前'
-    function formatTimeAgo(dateStr) {
-      if (!dateStr) return '-';
-      const date = new Date(dateStr);
-      const now = new Date();
+    /* ---------- 缓存 ---------- */
+    const CACHE_KEY="soneium_cache_v2";
+    function saveCache(allData,time){localStorage.setItem(CACHE_KEY,JSON.stringify({time,data:allData}));}
+    function loadCache(){try{return JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch{return null;}}
 
-      const sameDay = date.getFullYear() === now.getFullYear() &&
-                      date.getMonth() === now.getMonth() &&
-                      date.getDate() === now.getDate();
-      if (sameDay) return '今天';
-
-      const diff = Math.floor((now - date) / 86400000);
-      return `${diff} 天前`;
-    }
-
-    const getDayString   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const getMonthString = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    function getWeekString(d) {
-      const date = new Date(+d); date.setHours(0,0,0,0);
-      const dayNum = (date.getDay()+6)%7;
-      date.setDate(date.getDate()-dayNum+3);
-      const firstThu = new Date(date.getFullYear(),0,4);
-      const weekNum = 1 + Math.floor((date-firstThu)/(7*86400000));
-      return `${date.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
-    }
-
-    function saveToCache(wallets, results) {
-      const data = wallets.map((addr, i) => ({
-        address: addr,
-        checked: document.querySelector(`input[data-address="${addr}"]`)?.checked || false,
-        ...results[i]
-      }));
-      localStorage.setItem("soneium_cache", JSON.stringify(data));
-    }
-    const loadFromCache = () => { try { return JSON.parse(localStorage.getItem("soneium_cache")||"[]"); } catch { return []; } };
-
-    function importAddresses() {
-      const input = document.getElementById("addressInput").value.trim();
-      allAddrs = input.split("\n").map(x=>x.trim()).filter(x=>x.length===42 && x.startsWith("0x"));
-      const tbody = document.getElementById("resultBody");
-      tbody.innerHTML = "";
-      allAddrs.forEach((addr, i) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked></td>
-          <td>${i+1}</td>
-          <td style="max-width:160px;">${addr}</td>
-          <td colspan="9">等待查询...</td>
-        `;
-        tbody.appendChild(row);
-        rowMap[addr.toLowerCase()] = row;
+    /* ---------- DOM ---------- */
+    function importAddresses(){
+      const input=document.getElementById("addressInput").value.trim();
+      allAddrs=input.split("\n").map(x=>x.trim()).filter(x=>/^0x[a-fA-F0-9]{40}$/.test(x));
+      const tbody=document.getElementById("resultBody");tbody.innerHTML="";
+      Object.keys(rowMap).forEach(k=>delete rowMap[k]);
+      allAddrs.forEach((addr,i)=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked></td>
+          <td>${i+1}</td><td style="max-width:160px;">${addr}</td><td colspan="9">等待查询...</td>`;
+        tbody.appendChild(tr);rowMap[addr.toLowerCase()]=tr;
       });
-      document.getElementById("selectAll").checked = true;
-      document.getElementById("summaryRow").innerHTML = "";
+      document.getElementById("selectAll").checked=true;
+      document.getElementById("summaryRow").innerHTML="";
     }
-    const toggleAll = src => document.querySelectorAll('.row-checkbox').forEach(cb=>cb.checked = src.checked);
+    const toggleAll=src=>document.querySelectorAll('.row-checkbox').forEach(cb=>cb.checked=src.checked);
 
-    async function fetchStats(address) {
-      try {
-        const [meta,counter] = await Promise.all([
-          fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}`).then(r=>r.json()),
-          fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}/counters`).then(r=>r.json())
-        ]);
-        const bal = parseFloat(meta.coin_balance||"0")/1e18;
-        const price = parseFloat(meta.exchange_rate||"0");
-        const gasUsed = parseInt(counter.gas_usage_count||"0",10);
-        const feeEth = gasUsed*0.000000000054193601;
-        return { ethBalance: bal.toFixed(4), feeUSD:(feeEth*price).toFixed(4), error:null };
-      } catch { return { ethBalance:"-", feeUSD:"-", error:"获取失败" }; }
-    }
+    /* ---------- APIs ---------- */
+    async function fetchStats(a){try{
+      const [m,c]=await Promise.all([
+        fetch(`https://soneium.blockscout.com/api/v2/addresses/${a}`).then(r=>r.json()),
+        fetch(`https://soneium.blockscout.com/api/v2/addresses/${a}/counters`).then(r=>r.json())
+      ]);
+      const bal=parseFloat(m.coin_balance||"0")/1e18,price=parseFloat(m.exchange_rate||"0");
+      const gas=parseInt(c.gas_usage_count||"0",10)*0.000000000054193601*price;
+      return{ethBalance:bal.toFixed(4),feeUSD:gas.toFixed(4)};
+    }catch{return{ethBalance:"-",feeUSD:"-",error:"获取失败"};}}
 
-    async function fetchTxData(address) {
-      const allTxs=[]; const size=50; let params="";
-      try {
+    async function fetchTx(a){
+      const txs=[],size=50;let p="";
+      try{
         while(true){
-          const url=`https://soneium.blockscout.com/api/v2/addresses/${address}/transactions?items_count=${size}${params}`;
-          const res=await fetch(url); const data=await res.json(); const items=data.items||[];
-          allTxs.push(...items.filter(tx=>tx.from?.hash?.toLowerCase()===address.toLowerCase()));
-          if(!data.next_page_params) break;
-          const p=data.next_page_params;
-          params=`&block_number=${p.block_number}&fee=${p.fee}&hash=${p.hash}&index=${p.index}&inserted_at=${p.inserted_at}&value=${p.value}`;
+          const d=await fetch(`https://soneium.blockscout.com/api/v2/addresses/${a}/transactions?items_count=${size}${p}`).then(r=>r.json());
+          txs.push(...(d.items||[]).filter(t=>t.from?.hash?.toLowerCase()===a.toLowerCase()));
+          if(!d.next_page_params)break;
+          const n=d.next_page_params;p=`&block_number=${n.block_number}&fee=${n.fee}&hash=${n.hash}&index=${n.index}&inserted_at=${n.inserted_at}&value=${n.value}`;
         }
+        const days=new Set(),weeks=new Set(),mons=new Set(),cons=new Set();let last=null;
+        for(const t of txs){if(!(t.timestamp&&t.to?.hash))continue;const d=new Date(t.timestamp);
+          days.add(dayStr(d));weeks.add(weekStr(d));mons.add(monStr(d));cons.add(t.to.hash);}
+        if(txs.length)last=txs[0].timestamp;
+        return{txCount:txs.length,dayActivity:days.size,weekActivity:weeks.size,monthActivity:mons.size,
+               contractActivity:cons.size,lastTxTime:last};
+      }catch{return{txCount:0,dayActivity:0,weekActivity:0,monthActivity:0,contractActivity:0,lastTxTime:null,error:"交易查询失败"};}}
 
-        const days=new Set(), weeks=new Set(), months=new Set(), contracts=new Set();
-        let lastTime=null;
-        for(const tx of allTxs){
-          if(!tx.timestamp||!tx.to?.hash) continue;
-          const t=new Date(tx.timestamp);
-          days.add(getDayString(t)); weeks.add(getWeekString(t)); months.add(getMonthString(t)); contracts.add(tx.to.hash);
-        }
-        if(allTxs.length) lastTime=allTxs[0].timestamp;
+    /* ---------- 查询 ---------- */
+    async function startQuery(onlySel=false){
+      const cbs=[...document.querySelectorAll('.row-checkbox')];
+      const targets=cbs.filter(cb=>(!onlySel||cb.checked)).map(cb=>cb.dataset.address);
+      if(!targets.length){alert("请选择至少一个地址！");return;}
 
-        return { txCount:allTxs.length, dayActivity:days.size, weekActivity:weeks.size,
-                 monthActivity:months.size, contractActivity:contracts.size,
-                 lastTxTime:lastTime, error:null };
-      } catch {
-        return { txCount:0, dayActivity:0, weekActivity:0, monthActivity:0,
-                 contractActivity:0, lastTxTime:null, error:"交易查询失败" };
-      }
-    }
+      const btn=document.getElementById("queryAllBtn");btn.disabled=true;btn.textContent="查询中...";
+      const pw=document.getElementById("progressWrapper");const pb=document.getElementById("progressBar");
+      const pt=document.getElementById("progressText");pb.max=targets.length;pb.value=0;pt.textContent=`0 / ${targets.length}`;pw.style.display="block";
 
-    async function startQuery(onlySelected=false){
-      const checkboxes=[...document.querySelectorAll('.row-checkbox')];
-      const targets=checkboxes.filter(cb=>(!onlySelected||cb.checked)).map(cb=>cb.dataset.address);
-      if(!targets.length) return alert("请选择至少一个地址！");
-      const btn=document.getElementById("queryAllBtn");
-      btn.disabled=true; btn.textContent="查询中...";
-
-      const resultsMap={}; let idx=0; const concurrency=5;
-      async function runBatch(){
-        const batch=[];
-        while(idx<targets.length && batch.length<concurrency){
+      const newResults={},concurrency=5;let idx=0,done=0;
+      async function batch(){
+        const arr=[];while(idx<targets.length&&arr.length<concurrency){
           const addr=targets[idx++];
-          batch.push((async()=>{
-            const [txRes,statRes]=await Promise.all([fetchTxData(addr),fetchStats(addr)]);
-            const row=rowMap[addr.toLowerCase()];
-            const hasErr=txRes.error||statRes.error;
-            const timeTxt=txRes.lastTxTime?formatTimeAgo(txRes.lastTxTime):'-';
-            const timeCls=txRes.lastTxTime&&!isActiveThisMonth(txRes.lastTxTime) ? "error" : "";
-            row.innerHTML=`
-              <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked></td>
-              <td>${allAddrs.indexOf(addr)+1}</td>
-              <td style="max-width:160px;">${addr}</td>
-              <td>${txRes.txCount}</td>
-              <td>${txRes.dayActivity}</td>
-              <td>${txRes.weekActivity}</td>
-              <td>${txRes.monthActivity}</td>
-              <td>${txRes.contractActivity}</td>
-              <td class="${timeCls}">${timeTxt}</td>
-              <td>${statRes.ethBalance}</td>
-              <td>${statRes.feeUSD}</td>
-              <td class="${hasErr?'error':''}">${hasErr?(txRes.error||statRes.error):'✅'}</td>`;
-            resultsMap[addr.toLowerCase()]={ address:addr, ...txRes, ...statRes };
+          arr.push((async()=>{
+            const [tx,st]=await Promise.all([fetchTx(addr),fetchStats(addr)]);
+            const row=rowMap[addr.toLowerCase()],err=tx.error||st.error;
+            const timeTxt=tx.lastTxTime?formatTimeAgo(tx.lastTxTime):'-';
+            const timeCls=tx.lastTxTime&&!isActiveThisMonth(tx.lastTxTime)?"error":"";
+            row.innerHTML=`<td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked></td>
+              <td>${allAddrs.indexOf(addr)+1}</td><td style="max-width:160px;">${addr}</td>
+              <td>${tx.txCount}</td><td>${tx.dayActivity}</td><td>${tx.weekActivity}</td><td>${tx.monthActivity}</td>
+              <td>${tx.contractActivity}</td><td class="${timeCls}">${timeTxt}</td>
+              <td>${st.ethBalance}</td><td>${st.feeUSD}</td>
+              <td class="${err?'error':''}">${err?(tx.error||st.error):'✅'}</td>`;
+            newResults[addr.toLowerCase()]={address:addr,...tx,...st};
+            done++;pb.value=done;pt.textContent=`${done} / ${targets.length}`;
           })());
         }
-        await Promise.all(batch);
-        if(idx<targets.length) await runBatch();
+        await Promise.all(arr);if(idx<targets.length)await batch();
       }
-      await runBatch();
-      const resList=targets.map(a=>resultsMap[a.toLowerCase()]);
-      saveToCache(allAddrs,resList);
-      showSummary(resList);
-      btn.disabled=false; btn.textContent="开始查询";
+      await batch();
+
+      /* 合并旧缓存数据，保持未查询地址 */
+      const cache=loadCache();const oldMap=cache?Object.fromEntries(cache.data.map(i=>[i.address.toLowerCase(),i])):{};
+      Object.assign(oldMap,newResults);      // 更新 / 覆盖
+      const merged=allAddrs.map(a=>oldMap[a.toLowerCase()]||{address:a});
+      saveCache(merged,Date.now());
+      showSummary(merged);updateLastQuery(Date.now());
+
+      btn.disabled=false;btn.textContent="开始查询";pw.style.display="none";
     }
 
-    function showSummary(data){
-      const sum=data.reduce((acc,c)=>{acc.eth+=+c.ethBalance||0; acc.gas+=+c.feeUSD||0; return acc;},{eth:0,gas:0});
+    /* ---------- 汇总 ---------- */
+    function showSummary(arr){
+      const tot=arr.reduce((s,c)=>{s.e+=(+c.ethBalance||0);s.g+=(+c.feeUSD||0);return s;},{e:0,g:0});
       document.getElementById("summaryRow").innerHTML=`
-        <tr><td colspan="9">总计</td><td>${sum.eth.toFixed(4)}</td><td>${sum.gas.toFixed(4)}</td><td>-</td></tr>`;
+        <tr><td colspan="9">总计</td><td>${tot.e.toFixed(4)}</td><td>${tot.g.toFixed(4)}</td><td>-</td></tr>`;
     }
 
+    /* ---------- 上次查询时间 ---------- */
+    function updateLastQuery(ts){
+      const d=new Date(ts);const t=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+      document.getElementById("lastQueryInfo").textContent=`上次查询：${t}`;
+    }
+
+    /* ---------- 页面加载 ---------- */
     window.addEventListener("DOMContentLoaded",()=>{
-      const cached=loadFromCache();
-      if(!cached.length) return;
-      document.getElementById("addressInput").value=cached.map(x=>x.address).join("\n");
-      allAddrs=cached.map(x=>x.address);
-      const tbody=document.getElementById("resultBody"); tbody.innerHTML="";
-      cached.forEach((item,i)=>{
-        const timeTxt=item.lastTxTime?formatTimeAgo(item.lastTxTime):'-';
-        const timeCls=item.lastTxTime&&!isActiveThisMonth(item.lastTxTime)?"error":"";
-        const row=document.createElement("tr");
-        row.innerHTML=`
-          <td><input type="checkbox" class="row-checkbox" data-address="${item.address}" ${item.checked?'checked':''}></td>
-          <td>${i+1}</td>
-          <td style="max-width:160px;">${item.address}</td>
-          <td>${item.txCount}</td>
-          <td>${item.dayActivity}</td>
-          <td>${item.weekActivity}</td>
-          <td>${item.monthActivity}</td>
-          <td>${item.contractActivity}</td>
-          <td class="${timeCls}">${timeTxt}</td>
-          <td>${item.ethBalance}</td>
-          <td>${item.feeUSD}</td>
-          <td>✅</td>`;
-        tbody.appendChild(row); rowMap[item.address.toLowerCase()]=row;
+      const cache=loadCache();if(!cache)return;
+      updateLastQuery(cache.time);
+      document.getElementById("addressInput").value=cache.data.map(x=>x.address).join("\n");
+      allAddrs=cache.data.map(x=>x.address);
+      const tb=document.getElementById("resultBody");tb.innerHTML="";Object.keys(rowMap).forEach(k=>delete rowMap[k]);
+
+      cache.data.forEach((it,i)=>{
+        const timeTxt=it.lastTxTime?formatTimeAgo(it.lastTxTime):'-';
+        const timeCls=it.lastTxTime&&!isActiveThisMonth(it.lastTxTime)?"error":"";
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td><input type="checkbox" class="row-checkbox" data-address="${it.address}" ${it.checked?'checked':''}></td>
+          <td>${i+1}</td><td style="max-width:160px;">${it.address}</td>
+          <td>${it.txCount??'-'}</td><td>${it.dayActivity??'-'}</td><td>${it.weekActivity??'-'}</td><td>${it.monthActivity??'-'}</td>
+          <td>${it.contractActivity??'-'}</td><td class="${timeCls}">${timeTxt}</td>
+          <td>${it.ethBalance??'-'}</td><td>${it.feeUSD??'-'}</td>
+          <td>${it.error?'<span class="error">加载失败</span>':'✅'}</td>`;
+        tb.appendChild(tr);rowMap[it.address.toLowerCase()]=tr;
       });
-      showSummary(cached);
-      document.getElementById("selectAll").checked=true;
+      showSummary(cache.data);document.getElementById("selectAll").checked=true;
     });
   </script>
 
