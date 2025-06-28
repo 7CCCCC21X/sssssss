@@ -12,102 +12,38 @@
       padding: 0;
       color: #333;
     }
-
-    .container {
-      width: 100%;
-      padding: 0 40px;
-      box-sizing: border-box;
-    }
-
-    .top-bar {
-      position: sticky;
-      top: 0;
-      background: #f9f9f9;
-      padding: 20px 0 10px;
-      z-index: 10;
-    }
+    .container { width: 100%; padding: 0 40px; box-sizing: border-box; }
+    .top-bar { position: sticky; top: 0; background: #f9f9f9; padding: 20px 0 10px; z-index: 10; }
 
     textarea {
-      width: 100%;
-      height: 100px;
-      font-size: 14px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-      margin-bottom: 10px;
+      width: 100%; height: 100px; font-size: 14px; padding: 10px;
+      border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 10px;
     }
-
     button {
-      background: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 18px;
-      font-weight: bold;
-      margin-right: 10px;
-      cursor: pointer;
-      transition: background 0.3s;
+      background: #007BFF; color: #fff; border: none; border-radius: 6px;
+      padding: 8px 18px; font-weight: bold; margin-right: 10px;
+      cursor: pointer; transition: background .3s;
     }
-
-    button:disabled {
-      background: #999;
-      cursor: not-allowed;
-    }
-
-    button:hover:not(:disabled) {
-      background: #0056b3;
-    }
+    button:disabled { background: #999; cursor: not-allowed; }
+    button:hover:not(:disabled) { background: #0056b3; }
 
     .table-wrapper {
-      overflow-x: auto;
-      margin-top: 20px;
-      max-height: 70vh;
-      overflow-y: auto;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      background: #fff;
+      overflow-x: auto; margin-top: 20px; max-height: 70vh; overflow-y: auto;
+      border: 1px solid #eee; border-radius: 8px; background: #fff;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 1000px;
-    }
-
+    table { width: 100%; border-collapse: collapse; min-width: 1000px; }
     th, td {
-      border: 1px solid #e0e0e0;
-      padding: 8px 6px;
-      text-align: center;
-      font-size: 13px;
-      white-space: normal;
-      word-break: break-word;
+      border: 1px solid #e0e0e0; padding: 8px 6px; text-align: center;
+      font-size: 13px; white-space: normal; word-break: break-word;
     }
+    thead th { position: sticky; top: 0; background: #f0f2f5; z-index: 5; }
+    tr:hover { background: #f1faff; }
 
-    thead th {
-      position: sticky;
-      top: 0;
-      background-color: #f0f2f5;
-      z-index: 5;
-    }
+    /* 红色高亮：不在当月活跃 */
+    .error { color: #e11d48; font-weight: 600; }
 
-    tr:hover {
-      background-color: #f1faff;
-    }
-
-    .error {
-      color: red;
-    }
-
-    tfoot td {
-      font-weight: bold;
-      background-color: #f9f9f9;
-    }
-
-    .twitter {
-      text-align: center;
-      margin-top: 20px;
-    }
+    tfoot td { font-weight: bold; background: #f9f9f9; }
+    .twitter { text-align: center; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -138,8 +74,8 @@
             <th>月活</th>
             <th>合约数</th>
             <th>最后交易</th>
-            <th>ETH余额</th>
-            <th>Gas总消耗（USD）</th>
+            <th>ETH 余额</th>
+            <th>Gas 总消耗（USD）</th>
             <th>状态</th>
           </tr>
         </thead>
@@ -153,84 +89,62 @@
     let allAddrs = [];
     const rowMap = {};
 
-    // 修改后的时间格式化函数:
-    // - 如果是同一天 => '今天'
-    // - 否则 => 'X 天前'（含1天, 30天, 100天等）
+    // 判断给定 ISO 字符串是否属于当月
+    function isActiveThisMonth(isoStr) {
+      if (!isoStr) return false;
+      const d = new Date(isoStr);
+      const now = new Date();
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+
+    // - 同一天 => '今天'
+    // - 否则 => 'X 天前'
     function formatTimeAgo(dateStr) {
       if (!dateStr) return '-';
       const date = new Date(dateStr);
       const now = new Date();
 
-      const sameDay =
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth() &&
-        date.getDate() === now.getDate();
+      const sameDay = date.getFullYear() === now.getFullYear() &&
+                      date.getMonth() === now.getMonth() &&
+                      date.getDate() === now.getDate();
+      if (sameDay) return '今天';
 
-      if (sameDay) {
-        return '今天';
-      }
-
-      const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+      const diff = Math.floor((now - date) / 86400000);
       return `${diff} 天前`;
     }
 
-    // 辅助函数：返回 YYYY-MM-DD，用于统计独立天
-    function getDayString(d) {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    // 辅助函数：返回 ISO 年-周
+    const getDayString   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const getMonthString = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     function getWeekString(d) {
-      const date = new Date(+d);
-      date.setHours(0, 0, 0, 0);
-      const dayNum = (date.getDay() + 6) % 7; 
-      date.setDate(date.getDate() - dayNum + 3);
-
-      const firstThursday = new Date(date.getFullYear(), 0, 4);
-      const diff = date - firstThursday;
-      const oneWeek = 7 * 24 * 3600 * 1000;
-      const weekNum = 1 + Math.floor(diff / oneWeek);
-      return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-    }
-
-    // 辅助函数：返回 YYYY-MM，用于统计独立月
-    function getMonthString(d) {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      return `${year}-${month}`;
+      const date = new Date(+d); date.setHours(0,0,0,0);
+      const dayNum = (date.getDay()+6)%7;
+      date.setDate(date.getDate()-dayNum+3);
+      const firstThu = new Date(date.getFullYear(),0,4);
+      const weekNum = 1 + Math.floor((date-firstThu)/(7*86400000));
+      return `${date.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
     }
 
     function saveToCache(wallets, results) {
-      const data = wallets.map((addr, index) => ({
+      const data = wallets.map((addr, i) => ({
         address: addr,
         checked: document.querySelector(`input[data-address="${addr}"]`)?.checked || false,
-        ...results[index]
+        ...results[i]
       }));
       localStorage.setItem("soneium_cache", JSON.stringify(data));
     }
-
-    function loadFromCache() {
-      try {
-        return JSON.parse(localStorage.getItem("soneium_cache") || "[]");
-      } catch (e) {
-        return [];
-      }
-    }
+    const loadFromCache = () => { try { return JSON.parse(localStorage.getItem("soneium_cache")||"[]"); } catch { return []; } };
 
     function importAddresses() {
       const input = document.getElementById("addressInput").value.trim();
-      allAddrs = input.split("\n").map(line => line.trim()).filter(line => line.length === 42 && line.startsWith("0x"));
+      allAddrs = input.split("\n").map(x=>x.trim()).filter(x=>x.length===42 && x.startsWith("0x"));
       const tbody = document.getElementById("resultBody");
       tbody.innerHTML = "";
-      allAddrs.forEach((addr, index) => {
+      allAddrs.forEach((addr, i) => {
         const row = document.createElement("tr");
         row.innerHTML = `
-          <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked /></td>
-          <td>${index + 1}</td>
-          <td style="max-width: 160px;">${addr}</td>
+          <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked></td>
+          <td>${i+1}</td>
+          <td style="max-width:160px;">${addr}</td>
           <td colspan="9">等待查询...</td>
         `;
         tbody.appendChild(row);
@@ -239,201 +153,129 @@
       document.getElementById("selectAll").checked = true;
       document.getElementById("summaryRow").innerHTML = "";
     }
-
-    function toggleAll(source) {
-      const checkboxes = document.querySelectorAll('.row-checkbox');
-      checkboxes.forEach(cb => cb.checked = source.checked);
-    }
+    const toggleAll = src => document.querySelectorAll('.row-checkbox').forEach(cb=>cb.checked = src.checked);
 
     async function fetchStats(address) {
       try {
-        const [metaRes, counterRes] = await Promise.all([
-          fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}`).then(r => r.json()),
-          fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}/counters`).then(r => r.json())
+        const [meta,counter] = await Promise.all([
+          fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}`).then(r=>r.json()),
+          fetch(`https://soneium.blockscout.com/api/v2/addresses/${address}/counters`).then(r=>r.json())
         ]);
-        const balance = parseFloat(metaRes.coin_balance || "0") / 1e18;
-        const price = parseFloat(metaRes.exchange_rate || "0");
-        const gasUsed = parseInt(counterRes.gas_usage_count || "0", 10);
-        const gasPrice = 0.000000000054193601;
-        const feeETH = gasUsed * gasPrice;
-        const feeUSD = feeETH * price;
-        return {
-          ethBalance: balance.toFixed(4),
-          feeUSD: feeUSD.toFixed(4),
-          error: null
-        };
-      } catch (e) {
-        return { ethBalance: "-", feeUSD: "-", error: "获取失败" };
-      }
+        const bal = parseFloat(meta.coin_balance||"0")/1e18;
+        const price = parseFloat(meta.exchange_rate||"0");
+        const gasUsed = parseInt(counter.gas_usage_count||"0",10);
+        const feeEth = gasUsed*0.000000000054193601;
+        return { ethBalance: bal.toFixed(4), feeUSD:(feeEth*price).toFixed(4), error:null };
+      } catch { return { ethBalance:"-", feeUSD:"-", error:"获取失败" }; }
     }
 
     async function fetchTxData(address) {
-      const allTxs = [];
-      const pageSize = 50;
-      let pageParams = "";
-      let lastTime = null;
-
+      const allTxs=[]; const size=50; let params="";
       try {
-        while (true) {
-          const url = `https://soneium.blockscout.com/api/v2/addresses/${address}/transactions?items_count=${pageSize}${pageParams}`;
-          const res = await fetch(url);
-          const data = await res.json();
-          const items = data.items || [];
-
-          const userTxs = items.filter(tx => tx.from?.hash?.toLowerCase() === address.toLowerCase());
-          allTxs.push(...userTxs);
-
-          if (!data.next_page_params) break;
-
-          const p = data.next_page_params;
-          pageParams = `&block_number=${p.block_number}&fee=${p.fee}&hash=${p.hash}&index=${p.index}&inserted_at=${p.inserted_at}&value=${p.value}`;
+        while(true){
+          const url=`https://soneium.blockscout.com/api/v2/addresses/${address}/transactions?items_count=${size}${params}`;
+          const res=await fetch(url); const data=await res.json(); const items=data.items||[];
+          allTxs.push(...items.filter(tx=>tx.from?.hash?.toLowerCase()===address.toLowerCase()));
+          if(!data.next_page_params) break;
+          const p=data.next_page_params;
+          params=`&block_number=${p.block_number}&fee=${p.fee}&hash=${p.hash}&index=${p.index}&inserted_at=${p.inserted_at}&value=${p.value}`;
         }
 
-        const days = new Set();
-        const weeks = new Set();
-        const months = new Set();
-        const contracts = new Set();
-
-        for (const tx of allTxs) {
-          if (!tx.timestamp || !tx.to?.hash) continue;
-          const txDate = new Date(tx.timestamp);
-
-          days.add(getDayString(txDate));
-          weeks.add(getWeekString(txDate));
-          months.add(getMonthString(txDate));
-          contracts.add(tx.to.hash);
+        const days=new Set(), weeks=new Set(), months=new Set(), contracts=new Set();
+        let lastTime=null;
+        for(const tx of allTxs){
+          if(!tx.timestamp||!tx.to?.hash) continue;
+          const t=new Date(tx.timestamp);
+          days.add(getDayString(t)); weeks.add(getWeekString(t)); months.add(getMonthString(t)); contracts.add(tx.to.hash);
         }
+        if(allTxs.length) lastTime=allTxs[0].timestamp;
 
-        if (allTxs.length > 0) {
-          lastTime = allTxs[0].timestamp;
-        }
-
-        return {
-          txCount: allTxs.length,
-          dayActivity: days.size,
-          weekActivity: weeks.size,
-          monthActivity: months.size,
-          contractActivity: contracts.size,
-          lastTxTime: lastTime,
-          error: null
-        };
-      } catch (e) {
-        return {
-          txCount: 0,
-          dayActivity: 0,
-          weekActivity: 0,
-          monthActivity: 0,
-          contractActivity: 0,
-          lastTxTime: null,
-          error: "交易查询失败"
-        };
+        return { txCount:allTxs.length, dayActivity:days.size, weekActivity:weeks.size,
+                 monthActivity:months.size, contractActivity:contracts.size,
+                 lastTxTime:lastTime, error:null };
+      } catch {
+        return { txCount:0, dayActivity:0, weekActivity:0, monthActivity:0,
+                 contractActivity:0, lastTxTime:null, error:"交易查询失败" };
       }
     }
 
-    async function startQuery(onlySelected = false) {
-      const checkboxes = [...document.querySelectorAll('.row-checkbox')];
-      const selectedAddrs = checkboxes.filter(cb => (!onlySelected || cb.checked)).map(cb => cb.dataset.address);
-      if (selectedAddrs.length === 0) return alert("请选择至少一个地址！");
-      const queryBtn = document.getElementById("queryAllBtn");
-      queryBtn.disabled = true;
-      queryBtn.textContent = "查询中...";
+    async function startQuery(onlySelected=false){
+      const checkboxes=[...document.querySelectorAll('.row-checkbox')];
+      const targets=checkboxes.filter(cb=>(!onlySelected||cb.checked)).map(cb=>cb.dataset.address);
+      if(!targets.length) return alert("请选择至少一个地址！");
+      const btn=document.getElementById("queryAllBtn");
+      btn.disabled=true; btn.textContent="查询中...";
 
-      const resultsMap = {};
-      let index = 0;
-      const maxConcurrency = 5;
-
-      async function runBatch() {
-        const batch = [];
-        while (index < selectedAddrs.length && batch.length < maxConcurrency) {
-          const addr = selectedAddrs[index++];
-          batch.push((async () => {
-            const [txRes, statRes] = await Promise.all([fetchTxData(addr), fetchStats(addr)]);
-            const row = rowMap[addr.toLowerCase()];
-            const hasError = txRes.error || statRes.error;
-
-            const timeText = txRes.lastTxTime ? formatTimeAgo(txRes.lastTxTime) : '-';
-            const timeColorClass =
-              txRes.lastTxTime && ((new Date() - new Date(txRes.lastTxTime)) / 86400000 > 7)
-                ? "error" : "";
-
-            row.innerHTML = `
-              <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked /></td>
-              <td>${allAddrs.indexOf(addr) + 1}</td>
-              <td style="max-width: 160px;">${addr}</td>
+      const resultsMap={}; let idx=0; const concurrency=5;
+      async function runBatch(){
+        const batch=[];
+        while(idx<targets.length && batch.length<concurrency){
+          const addr=targets[idx++];
+          batch.push((async()=>{
+            const [txRes,statRes]=await Promise.all([fetchTxData(addr),fetchStats(addr)]);
+            const row=rowMap[addr.toLowerCase()];
+            const hasErr=txRes.error||statRes.error;
+            const timeTxt=txRes.lastTxTime?formatTimeAgo(txRes.lastTxTime):'-';
+            const timeCls=txRes.lastTxTime&&!isActiveThisMonth(txRes.lastTxTime) ? "error" : "";
+            row.innerHTML=`
+              <td><input type="checkbox" class="row-checkbox" data-address="${addr}" checked></td>
+              <td>${allAddrs.indexOf(addr)+1}</td>
+              <td style="max-width:160px;">${addr}</td>
               <td>${txRes.txCount}</td>
               <td>${txRes.dayActivity}</td>
               <td>${txRes.weekActivity}</td>
               <td>${txRes.monthActivity}</td>
               <td>${txRes.contractActivity}</td>
-              <td class="${timeColorClass}">${timeText}</td>
+              <td class="${timeCls}">${timeTxt}</td>
               <td>${statRes.ethBalance}</td>
               <td>${statRes.feeUSD}</td>
-              <td class="${hasError ? 'error' : ''}">${hasError ? (txRes.error || statRes.error) : "✅"}</td>
-            `;
-
-            resultsMap[addr.toLowerCase()] = { address: addr, ...txRes, ...statRes };
+              <td class="${hasErr?'error':''}">${hasErr?(txRes.error||statRes.error):'✅'}</td>`;
+            resultsMap[addr.toLowerCase()]={ address:addr, ...txRes, ...statRes };
           })());
         }
         await Promise.all(batch);
-        if (index < selectedAddrs.length) {
-          await runBatch();
-        }
+        if(idx<targets.length) await runBatch();
       }
-
       await runBatch();
-      const resultList = selectedAddrs.map(addr => resultsMap[addr.toLowerCase()]);
-      saveToCache(allAddrs, resultList);
-      showSummary(resultList);
-      queryBtn.disabled = false;
-      queryBtn.textContent = "开始查询";
+      const resList=targets.map(a=>resultsMap[a.toLowerCase()]);
+      saveToCache(allAddrs,resList);
+      showSummary(resList);
+      btn.disabled=false; btn.textContent="开始查询";
     }
 
-    function showSummary(data) {
-      const summary = data.reduce((acc, cur) => {
-        acc.eth += parseFloat(cur.ethBalance || 0);
-        acc.gas += parseFloat(cur.feeUSD || 0);
-        return acc;
-      }, { eth: 0, gas: 0 });
-
-      document.getElementById("summaryRow").innerHTML = `
-        <tr>
-          <td colspan="9">总计</td>
-          <td>${summary.eth.toFixed(4)}</td>
-          <td>${summary.gas.toFixed(4)}</td>
-          <td>-</td>
-        </tr>`;
+    function showSummary(data){
+      const sum=data.reduce((acc,c)=>{acc.eth+=+c.ethBalance||0; acc.gas+=+c.feeUSD||0; return acc;},{eth:0,gas:0});
+      document.getElementById("summaryRow").innerHTML=`
+        <tr><td colspan="9">总计</td><td>${sum.eth.toFixed(4)}</td><td>${sum.gas.toFixed(4)}</td><td>-</td></tr>`;
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const cached = loadFromCache();
-      if (cached.length > 0) {
-        document.getElementById("addressInput").value = cached.map(x => x.address).join("\n");
-        allAddrs = cached.map(x => x.address);
-        const tbody = document.getElementById("resultBody");
-        tbody.innerHTML = "";
-        cached.forEach((item, index) => {
-          const row = document.createElement("tr");
-          const timeText = item.lastTxTime ? formatTimeAgo(item.lastTxTime) : '-';
-          row.innerHTML = `
-            <td><input type="checkbox" class="row-checkbox" data-address="${item.address}" ${item.checked ? 'checked' : ''} /></td>
-            <td>${index + 1}</td>
-            <td style="max-width: 160px;">${item.address}</td>
-            <td>${item.txCount}</td>
-            <td>${item.dayActivity}</td>
-            <td>${item.weekActivity}</td>
-            <td>${item.monthActivity}</td>
-            <td>${item.contractActivity}</td>
-            <td>${timeText}</td>
-            <td>${item.ethBalance}</td>
-            <td>${item.feeUSD}</td>
-            <td>✅</td>
-          `;
-          tbody.appendChild(row);
-          rowMap[item.address.toLowerCase()] = row;
-        });
-        showSummary(cached);
-        document.getElementById("selectAll").checked = true;
-      }
+    window.addEventListener("DOMContentLoaded",()=>{
+      const cached=loadFromCache();
+      if(!cached.length) return;
+      document.getElementById("addressInput").value=cached.map(x=>x.address).join("\n");
+      allAddrs=cached.map(x=>x.address);
+      const tbody=document.getElementById("resultBody"); tbody.innerHTML="";
+      cached.forEach((item,i)=>{
+        const timeTxt=item.lastTxTime?formatTimeAgo(item.lastTxTime):'-';
+        const timeCls=item.lastTxTime&&!isActiveThisMonth(item.lastTxTime)?"error":"";
+        const row=document.createElement("tr");
+        row.innerHTML=`
+          <td><input type="checkbox" class="row-checkbox" data-address="${item.address}" ${item.checked?'checked':''}></td>
+          <td>${i+1}</td>
+          <td style="max-width:160px;">${item.address}</td>
+          <td>${item.txCount}</td>
+          <td>${item.dayActivity}</td>
+          <td>${item.weekActivity}</td>
+          <td>${item.monthActivity}</td>
+          <td>${item.contractActivity}</td>
+          <td class="${timeCls}">${timeTxt}</td>
+          <td>${item.ethBalance}</td>
+          <td>${item.feeUSD}</td>
+          <td>✅</td>`;
+        tbody.appendChild(row); rowMap[item.address.toLowerCase()]=row;
+      });
+      showSummary(cached);
+      document.getElementById("selectAll").checked=true;
     });
   </script>
 
